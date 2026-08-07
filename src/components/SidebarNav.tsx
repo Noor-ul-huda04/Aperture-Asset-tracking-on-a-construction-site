@@ -56,8 +56,8 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({
   ];
 
   return (
-    <nav className="bg-slate-900 border-r border-slate-800 w-full md:w-60 shrink-0 p-3 flex flex-row md:flex-col gap-1 overflow-x-auto md:overflow-y-auto sticky top-16 z-20">
-      <div className="hidden md:block px-3 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-widest font-mono">
+    <nav className="bg-white border-r border-slate-200 w-full md:w-60 shrink-0 p-3 flex flex-row md:flex-col gap-1 overflow-x-auto md:overflow-y-auto sticky top-16 z-20 shadow-xs">
+      <div className="hidden md:block px-3 py-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest font-mono">
         Platform Navigation
       </div>
       
@@ -69,15 +69,15 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({
             onClick={() => onSelectTab(item.id)}
             className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-all shrink-0 whitespace-nowrap ${
               isActive
-                ? 'bg-amber-500 text-slate-950 font-bold shadow-md shadow-amber-500/10'
-                : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/80'
+                ? 'bg-amber-500 text-white font-bold shadow-xs'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
             }`}
           >
-            <span className={isActive ? 'text-slate-950' : 'text-amber-400'}>{item.icon}</span>
+            <span className={isActive ? 'text-white' : 'text-amber-600'}>{item.icon}</span>
             <span className="flex-1 text-left">{item.label}</span>
             {item.badge !== undefined && item.badge > 0 && (
               <span className={`text-[10px] font-mono font-bold px-1.5 py-0.2 rounded-full ${
-                isActive ? 'bg-slate-900 text-amber-400' : 'bg-red-600 text-white animate-pulse'
+                isActive ? 'bg-amber-700 text-white' : 'bg-red-600 text-white animate-pulse'
               }`}>
                 {item.badge}
               </span>
@@ -86,14 +86,14 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({
         );
       })}
 
-      <div className="hidden md:block mt-auto pt-4 border-t border-slate-800 px-3">
-        <div className="bg-slate-950/80 border border-slate-800 rounded-lg p-2.5 text-[11px] text-slate-400">
-          <div className="flex items-center gap-1.5 font-mono text-emerald-400 font-bold mb-1">
-            <Activity className="w-3.5 h-3.5" />
-            <span>RFID Edge Engine</span>
+      <div className="hidden md:block mt-auto pt-4 border-t border-slate-100 px-3">
+        <div className="bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-[11px] text-slate-600">
+          <div className="flex items-center gap-1.5 font-mono text-emerald-700 font-bold mb-1">
+            <Activity className="w-3.5 h-3.5 text-emerald-600" />
+            <span>RFID & Express Backend</span>
           </div>
           <p className="text-[10px] text-slate-500 leading-tight">
-            Firebase Firestore sync active. 860-960MHz UHF Passive reader online.
+            Firebase Firestore DB + Express REST API active & synced.
           </p>
         </div>
       </div>

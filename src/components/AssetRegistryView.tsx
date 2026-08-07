@@ -83,41 +83,41 @@ export const AssetRegistryView: React.FC<AssetRegistryViewProps> = ({
     <div className="space-y-5">
       
       {/* Top Header & Quick Actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900 border border-slate-800 rounded-xl p-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white border border-slate-200 rounded-xl p-4 shadow-xs">
         <div>
-          <h2 className="font-bold text-lg text-white flex items-center gap-2">
-            <Boxes className="w-5 h-5 text-amber-400" />
+          <h2 className="font-bold text-lg text-slate-900 flex items-center gap-2">
+            <Boxes className="w-5 h-5 text-amber-600" />
             <span>Physical Asset Master Registry</span>
-            <span className="text-xs bg-slate-800 text-amber-400 border border-slate-700 font-mono font-bold px-2 py-0.5 rounded-full">
+            <span className="text-xs bg-slate-100 text-amber-800 border border-slate-200 font-mono font-bold px-2 py-0.5 rounded-full">
               {filteredAssets.length} / {assets.length}
             </span>
           </h2>
-          <p className="text-xs text-slate-400 mt-0.5">UHF RFID tagged tools, equipment, materials, and fleet inventory</p>
+          <p className="text-xs text-slate-500 mt-0.5">UHF RFID tagged tools, equipment, materials, and fleet inventory</p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
           
           <button
             onClick={onImportCsv}
-            className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 font-semibold text-xs rounded-lg flex items-center gap-1.5 transition-colors"
+            className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 font-semibold text-xs rounded-lg flex items-center gap-1.5 transition-colors"
             title="Import Asset Fleet via CSV"
           >
-            <Upload className="w-3.5 h-3.5 text-amber-400" />
+            <Upload className="w-3.5 h-3.5 text-amber-600" />
             <span className="hidden md:inline">CSV Import</span>
           </button>
 
           <button
             onClick={handleExportCsv}
-            className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 font-semibold text-xs rounded-lg flex items-center gap-1.5 transition-colors"
+            className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 font-semibold text-xs rounded-lg flex items-center gap-1.5 transition-colors"
             title="Export Selected Assets to CSV"
           >
-            <Download className="w-3.5 h-3.5 text-emerald-400" />
+            <Download className="w-3.5 h-3.5 text-emerald-600" />
             <span className="hidden md:inline">Export CSV</span>
           </button>
 
           <button
             onClick={onOpenRegisterModal}
-            className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-lg flex items-center gap-1.5 shadow-lg shadow-amber-500/20 transition-all"
+            className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs rounded-lg flex items-center gap-1.5 shadow-xs transition-all"
           >
             <Plus className="w-4 h-4 stroke-[3]" />
             <span>Register Asset</span>
@@ -127,7 +127,7 @@ export const AssetRegistryView: React.FC<AssetRegistryViewProps> = ({
       </div>
 
       {/* Filters & Search Toolbar */}
-      <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-3">
+      <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-3 shadow-xs">
         
         <div className="flex flex-col md:flex-row items-center justify-between gap-3">
           
@@ -139,7 +139,7 @@ export const AssetRegistryView: React.FC<AssetRegistryViewProps> = ({
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
               placeholder="Search by asset name, model, serial #, or EPC tag..."
-              className="w-full bg-slate-950 border border-slate-800 rounded-lg pl-9 pr-4 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500"
+              className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-9 pr-4 py-2 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-amber-500"
             />
           </div>
 
@@ -147,11 +147,11 @@ export const AssetRegistryView: React.FC<AssetRegistryViewProps> = ({
           <div className="flex items-center gap-3 w-full md:w-auto justify-between md:justify-end">
             
             <div className="flex items-center gap-2">
-              <SlidersHorizontal className="w-3.5 h-3.5 text-slate-400" />
+              <SlidersHorizontal className="w-3.5 h-3.5 text-slate-500" />
               <select
                 value={selectedStatus}
                 onChange={e => setSelectedStatus(e.target.value)}
-                className="bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:outline-none"
+                className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-xs text-slate-800 focus:outline-none"
               >
                 {statuses.map(st => (
                   <option key={st} value={st}>Status: {st}</option>
@@ -159,17 +159,17 @@ export const AssetRegistryView: React.FC<AssetRegistryViewProps> = ({
               </select>
             </div>
 
-            <div className="bg-slate-950 p-1 border border-slate-800 rounded-lg flex items-center gap-1">
+            <div className="bg-slate-100 p-1 border border-slate-200 rounded-lg flex items-center gap-1">
               <button
                 onClick={() => setViewMode('table')}
-                className={`p-1.5 rounded text-xs transition-colors ${viewMode === 'table' ? 'bg-amber-500 text-slate-950 font-bold' : 'text-slate-400 hover:text-white'}`}
+                className={`p-1.5 rounded text-xs transition-colors ${viewMode === 'table' ? 'bg-amber-500 text-white font-bold' : 'text-slate-500 hover:text-slate-900'}`}
                 title="Table View"
               >
                 <List className="w-4 h-4" />
               </button>
               <button
                 onClick={() => setViewMode('grid')}
-                className={`p-1.5 rounded text-xs transition-colors ${viewMode === 'grid' ? 'bg-amber-500 text-slate-950 font-bold' : 'text-slate-400 hover:text-white'}`}
+                className={`p-1.5 rounded text-xs transition-colors ${viewMode === 'grid' ? 'bg-amber-500 text-white font-bold' : 'text-slate-500 hover:text-slate-900'}`}
                 title="Grid Cards View"
               >
                 <LayoutGrid className="w-4 h-4" />
@@ -188,8 +188,8 @@ export const AssetRegistryView: React.FC<AssetRegistryViewProps> = ({
               onClick={() => setSelectedCategory(cat)}
               className={`px-3 py-1 rounded-full font-medium transition-all whitespace-nowrap shrink-0 ${
                 selectedCategory === cat
-                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/50 font-bold'
-                  : 'bg-slate-950 text-slate-400 border border-slate-800 hover:text-slate-200 hover:border-slate-700'
+                  ? 'bg-amber-50 text-amber-800 border border-amber-300 font-bold'
+                  : 'bg-slate-100 text-slate-600 border border-slate-200 hover:text-slate-900'
               }`}
             >
               {cat}
@@ -201,16 +201,16 @@ export const AssetRegistryView: React.FC<AssetRegistryViewProps> = ({
 
       {/* Main Asset View: Table or Grid */}
       {filteredAssets.length === 0 ? (
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-12 text-center text-slate-400 space-y-3">
-          <Boxes className="w-10 h-10 text-slate-600 mx-auto" />
-          <h3 className="font-bold text-base text-slate-200">No matching physical assets found</h3>
+        <div className="bg-white border border-slate-200 rounded-xl p-12 text-center text-slate-500 space-y-3">
+          <Boxes className="w-10 h-10 text-slate-300 mx-auto" />
+          <h3 className="font-bold text-base text-slate-800">No matching physical assets found</h3>
           <p className="text-xs text-slate-500 max-w-sm mx-auto">Try adjusting search query or clearing status/category filters.</p>
         </div>
       ) : viewMode === 'table' ? (
         
-        <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-x-auto shadow-xl">
-          <table className="w-full text-left text-xs text-slate-300">
-            <thead className="bg-slate-950 text-slate-400 uppercase font-mono text-[10px] border-b border-slate-800">
+        <div className="bg-white border border-slate-200 rounded-xl overflow-x-auto shadow-xs">
+          <table className="w-full text-left text-xs text-slate-700">
+            <thead className="bg-slate-50 text-slate-500 uppercase font-mono text-[10px] border-b border-slate-200">
               <tr>
                 <th className="py-3 px-4">Asset Details</th>
                 <th className="py-3 px-4">Category</th>
@@ -222,46 +222,46 @@ export const AssetRegistryView: React.FC<AssetRegistryViewProps> = ({
                 <th className="py-3 px-4 text-center">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800/80">
+            <tbody className="divide-y divide-slate-100">
               {filteredAssets.map(asset => (
-                <tr key={asset.id} className="hover:bg-slate-800/50 transition-colors">
+                <tr key={asset.id} className="hover:bg-slate-50 transition-colors">
                   
                   {/* Photo & Name */}
                   <td className="py-3 px-4">
                     <div className="flex items-center gap-3">
-                      <img src={asset.photoUrl} className="w-10 h-10 rounded-lg object-cover border border-slate-700 shrink-0" />
+                      <img src={asset.photoUrl} className="w-10 h-10 rounded-lg object-cover border border-slate-200 shrink-0" />
                       <div>
                         <span 
                           onClick={() => onOpenDetailModal(asset)}
-                          className="font-bold text-white hover:text-amber-400 cursor-pointer text-xs block leading-snug"
+                          className="font-bold text-slate-900 hover:text-amber-600 cursor-pointer text-xs block leading-snug"
                         >
                           {asset.name}
                         </span>
-                        <span className="text-[10px] text-slate-400">{asset.manufacturer} {asset.model} • SN: {asset.serialNumber}</span>
+                        <span className="text-[10px] text-slate-500">{asset.manufacturer} {asset.model} • SN: {asset.serialNumber}</span>
                       </div>
                     </div>
                   </td>
 
                   {/* Category */}
-                  <td className="py-3 px-4 font-semibold text-slate-300">
+                  <td className="py-3 px-4 font-semibold text-slate-800">
                     {asset.category}
                   </td>
 
                   {/* EPC Tag */}
-                  <td className="py-3 px-4 font-mono text-amber-300 font-bold text-[11px]">
+                  <td className="py-3 px-4 font-mono text-amber-800 font-bold text-[11px]">
                     <div className="flex items-center gap-1">
-                      <Tag className="w-3 h-3 text-amber-500" />
+                      <Tag className="w-3 h-3 text-amber-600" />
                       <span>{asset.tagEpc}</span>
                     </div>
                   </td>
 
                   {/* Zone & Site */}
                   <td className="py-3 px-4">
-                    <div className="flex items-center gap-1.5 text-slate-200 font-medium">
-                      <MapPin className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                    <div className="flex items-center gap-1.5 text-slate-800 font-medium">
+                      <MapPin className="w-3.5 h-3.5 text-amber-600 shrink-0" />
                       <div>
                         <span>{asset.zoneName}</span>
-                        <span className="block text-[10px] text-slate-400">{asset.siteName}</span>
+                        <span className="block text-[10px] text-slate-500">{asset.siteName}</span>
                       </div>
                     </div>
                   </td>
@@ -269,10 +269,10 @@ export const AssetRegistryView: React.FC<AssetRegistryViewProps> = ({
                   {/* Status Pill */}
                   <td className="py-3 px-4">
                     <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
-                      asset.status === 'In Zone' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' :
-                      asset.status === 'Checked Out' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' :
-                      asset.status === 'Missing' ? 'bg-red-500/20 text-red-400 border border-red-500/30 animate-pulse' :
-                      'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                      asset.status === 'In Zone' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
+                      asset.status === 'Checked Out' ? 'bg-blue-50 text-blue-700 border border-blue-200' :
+                      asset.status === 'Missing' ? 'bg-red-50 text-red-700 border border-red-200 animate-pulse' :
+                      'bg-amber-50 text-amber-700 border border-amber-200'
                     }`}>
                       {asset.status === 'In Zone' && <CheckCircle2 className="w-3 h-3" />}
                       {asset.status === 'Checked Out' && <ArrowLeftRight className="w-3 h-3" />}
@@ -282,19 +282,19 @@ export const AssetRegistryView: React.FC<AssetRegistryViewProps> = ({
                   </td>
 
                   {/* Custodian */}
-                  <td className="py-3 px-4 text-slate-300 font-medium">
+                  <td className="py-3 px-4 text-slate-700 font-medium">
                     {asset.custodianName ? (
-                      <span className="flex items-center gap-1 text-slate-200">
-                        <User className="w-3 h-3 text-blue-400" />
+                      <span className="flex items-center gap-1 text-slate-800">
+                        <User className="w-3 h-3 text-blue-600" />
                         <span>{asset.custodianName}</span>
                       </span>
                     ) : (
-                      <span className="text-slate-500 font-italic">Unassigned</span>
+                      <span className="text-slate-400 italic">Unassigned</span>
                     )}
                   </td>
 
                   {/* Value */}
-                  <td className="py-3 px-4 text-right font-mono font-bold text-emerald-400">
+                  <td className="py-3 px-4 text-right font-mono font-bold text-emerald-700">
                     ${asset.cost.toLocaleString()}
                   </td>
 
@@ -304,7 +304,7 @@ export const AssetRegistryView: React.FC<AssetRegistryViewProps> = ({
                       
                       <button
                         onClick={() => onFindRadar(asset)}
-                        className="p-1.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 rounded-lg transition-colors"
+                        className="p-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 rounded-lg transition-colors"
                         title="Proximity RSSI Radar Finder"
                       >
                         <Radio className="w-3.5 h-3.5" />
@@ -312,7 +312,7 @@ export const AssetRegistryView: React.FC<AssetRegistryViewProps> = ({
 
                       <button
                         onClick={() => onOpenDetailModal(asset)}
-                        className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition-colors"
+                        className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors"
                         title="View Asset Details"
                       >
                         <Eye className="w-3.5 h-3.5" />
@@ -320,7 +320,7 @@ export const AssetRegistryView: React.FC<AssetRegistryViewProps> = ({
 
                       <button
                         onClick={() => onEditAsset(asset)}
-                        className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition-colors"
+                        className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors"
                         title="Edit / Re-bind Tag"
                       >
                         <Edit className="w-3.5 h-3.5" />
@@ -328,7 +328,7 @@ export const AssetRegistryView: React.FC<AssetRegistryViewProps> = ({
 
                       <button
                         onClick={() => onDeleteAsset(asset.id)}
-                        className="p-1.5 bg-slate-800 hover:bg-red-900/50 text-slate-400 hover:text-red-300 rounded-lg transition-colors"
+                        className="p-1.5 bg-slate-100 hover:bg-red-50 text-slate-500 hover:text-red-600 rounded-lg transition-colors"
                         title="Remove Asset"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -348,11 +348,11 @@ export const AssetRegistryView: React.FC<AssetRegistryViewProps> = ({
         /* Grid Cards View */
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredAssets.map(asset => (
-            <div key={asset.id} className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden hover:border-slate-700 transition-colors flex flex-col">
-              <div className="relative h-40 bg-slate-950">
+            <div key={asset.id} className="bg-white border border-slate-200 rounded-xl overflow-hidden hover:border-amber-400 transition-colors flex flex-col shadow-xs">
+              <div className="relative h-40 bg-slate-100">
                 <img src={asset.photoUrl} className="w-full h-full object-cover" />
                 <div className="absolute top-2 right-2">
-                  <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full shadow-md ${
+                  <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full shadow-xs ${
                     asset.status === 'In Zone' ? 'bg-emerald-600 text-white' :
                     asset.status === 'Checked Out' ? 'bg-blue-600 text-white' :
                     'bg-red-600 text-white animate-pulse'
@@ -364,38 +364,38 @@ export const AssetRegistryView: React.FC<AssetRegistryViewProps> = ({
 
               <div className="p-4 space-y-3 flex-1 flex flex-col justify-between">
                 <div>
-                  <h3 className="font-bold text-white text-sm hover:text-amber-400 cursor-pointer" onClick={() => onOpenDetailModal(asset)}>
+                  <h3 className="font-bold text-slate-900 text-sm hover:text-amber-600 cursor-pointer" onClick={() => onOpenDetailModal(asset)}>
                     {asset.name}
                   </h3>
-                  <p className="text-xs text-slate-400">{asset.manufacturer} {asset.model}</p>
+                  <p className="text-xs text-slate-500">{asset.manufacturer} {asset.model}</p>
                 </div>
 
-                <div className="space-y-1.5 text-xs text-slate-300 bg-slate-950/60 p-2.5 rounded-lg border border-slate-800/80 font-mono">
+                <div className="space-y-1.5 text-xs text-slate-700 bg-slate-50 p-2.5 rounded-lg border border-slate-200 font-mono">
                   <div className="flex justify-between">
                     <span className="text-slate-500">EPC:</span>
-                    <span className="text-amber-400 font-bold">{asset.tagEpc}</span>
+                    <span className="text-amber-700 font-bold">{asset.tagEpc}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-slate-500">Zone:</span>
-                    <span className="text-slate-200">{asset.zoneName}</span>
+                    <span className="text-slate-800">{asset.zoneName}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-slate-500">Value:</span>
-                    <span className="text-emerald-400 font-bold">${asset.cost}</span>
+                    <span className="text-emerald-700 font-bold">${asset.cost}</span>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 pt-2 border-t border-slate-800">
+                <div className="flex items-center gap-2 pt-2 border-t border-slate-100">
                   <button
                     onClick={() => onFindRadar(asset)}
-                    className="flex-1 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-lg flex items-center justify-center gap-1"
+                    className="flex-1 py-1.5 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs rounded-lg flex items-center justify-center gap-1 shadow-xs"
                   >
                     <Radio className="w-3.5 h-3.5" />
                     <span>Radar</span>
                   </button>
                   <button
                     onClick={() => onOpenDetailModal(asset)}
-                    className="py-1.5 px-3 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-lg"
+                    className="py-1.5 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-lg"
                   >
                     Inspect
                   </button>
