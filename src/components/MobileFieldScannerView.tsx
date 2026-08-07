@@ -36,15 +36,15 @@ export const MobileFieldScannerView: React.FC<MobileFieldScannerViewProps> = ({
     <div className="max-w-md mx-auto space-y-5 py-4">
       
       {/* Handheld Device Shell */}
-      <div className="bg-slate-900 border-2 border-amber-500/50 rounded-3xl p-5 shadow-2xl space-y-5 text-xs text-slate-100">
+      <div className="bg-white border-2 border-amber-500 rounded-3xl p-5 shadow-lg space-y-5 text-xs text-slate-800">
         
         {/* Android / Zebra Bar Header */}
-        <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
           <div className="flex items-center gap-2">
-            <Smartphone className="w-5 h-5 text-amber-400" />
+            <Smartphone className="w-5 h-5 text-amber-600" />
             <div>
-              <span className="font-bold text-white block">Aperture Field Scanner</span>
-              <span className="text-[10px] text-emerald-400 font-mono font-bold">Zebra TC8300 • Online</span>
+              <span className="font-bold text-slate-900 block">Aperture Field Scanner</span>
+              <span className="text-[10px] text-emerald-700 font-mono font-bold">Zebra TC8300 • Online</span>
             </div>
           </div>
 
@@ -52,12 +52,12 @@ export const MobileFieldScannerView: React.FC<MobileFieldScannerViewProps> = ({
         </div>
 
         {/* Handheld RFID Laser Trigger Simulation */}
-        <div className="bg-slate-950 border border-slate-800 rounded-2xl p-4 text-center space-y-3">
-          <p className="text-[11px] text-slate-400">Aim handheld scanner at asset RFID tag or worker badge</p>
+        <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 text-center space-y-3">
+          <p className="text-[11px] text-slate-500">Aim handheld scanner at asset RFID tag or worker badge</p>
 
           <button
             onClick={handleSimulateHandheldTrigger}
-            className="w-full py-4 bg-gradient-to-r from-amber-500 to-orange-600 text-slate-950 font-black rounded-xl shadow-lg flex items-center justify-center gap-2 text-sm uppercase tracking-wider active:scale-95 transition-transform"
+            className="w-full py-4 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-black rounded-xl shadow-md flex items-center justify-center gap-2 text-sm uppercase tracking-wider active:scale-95 transition-transform"
           >
             <Scan className="w-5 h-5 stroke-[2.5]" />
             <span>PULL HANDHELD SCAN TRIGGER</span>
@@ -66,27 +66,27 @@ export const MobileFieldScannerView: React.FC<MobileFieldScannerViewProps> = ({
 
         {/* Scanned Tag Result Box */}
         {scannedAsset && (
-          <div className="bg-slate-950 border border-amber-500/40 rounded-2xl p-4 space-y-3">
+          <div className="bg-amber-50/50 border border-amber-300 rounded-2xl p-4 space-y-3">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-mono font-bold text-amber-400">EPC READ MATCHED</span>
+              <span className="text-[10px] font-mono font-bold text-amber-800">EPC READ MATCHED</span>
               <span className="text-[10px] font-mono text-slate-500">{scannedAsset.rssi} dBm</span>
             </div>
 
             <div className="flex items-center gap-3">
-              <img src={scannedAsset.photoUrl} className="w-12 h-12 rounded-lg object-cover border border-slate-700" />
+              <img src={scannedAsset.photoUrl} className="w-12 h-12 rounded-lg object-cover border border-slate-200" />
               <div>
-                <h4 className="font-bold text-white text-sm">{scannedAsset.name}</h4>
-                <p className="text-[10px] text-slate-400">{scannedAsset.category} • {scannedAsset.zoneName}</p>
-                <p className="font-mono text-amber-300 font-bold text-[11px]">{scannedAsset.tagEpc}</p>
+                <h4 className="font-bold text-slate-900 text-sm">{scannedAsset.name}</h4>
+                <p className="text-[10px] text-slate-500">{scannedAsset.category} • {scannedAsset.zoneName}</p>
+                <p className="font-mono text-amber-900 font-bold text-[11px]">{scannedAsset.tagEpc}</p>
               </div>
             </div>
 
             {/* Actions based on asset status */}
-            <div className="pt-2 border-t border-slate-800 space-y-2">
+            <div className="pt-2 border-t border-amber-200 space-y-2">
               {activeCheckout ? (
                 <button
                   onClick={() => { onScanReturn(activeCheckout.id); setScannedAsset(null); }}
-                  className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl"
+                  className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-xs"
                 >
                   Quick Return Check-In
                 </button>
@@ -95,7 +95,7 @@ export const MobileFieldScannerView: React.FC<MobileFieldScannerViewProps> = ({
                   <select
                     value={selectedUser}
                     onChange={e => setSelectedUser(e.target.value)}
-                    className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white text-xs"
+                    className="w-full bg-white border border-slate-200 rounded-lg p-2 text-slate-900 text-xs"
                   >
                     {users.map(u => (
                       <option key={u.id} value={u.id}>{u.name} ({u.badgeId})</option>
@@ -104,7 +104,7 @@ export const MobileFieldScannerView: React.FC<MobileFieldScannerViewProps> = ({
 
                   <button
                     onClick={() => { onScanCheckout(scannedAsset.id, selectedUser); setScannedAsset(null); }}
-                    className="w-full py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-xl"
+                    className="w-full py-2 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-xl shadow-xs"
                   >
                     Issue Check-Out to Badge
                   </button>
@@ -118,4 +118,5 @@ export const MobileFieldScannerView: React.FC<MobileFieldScannerViewProps> = ({
 
     </div>
   );
+
 };
