@@ -1,0 +1,6 @@
+{
+  "name": "Aperture Asset Tracking",
+  "description": "UHF RFID Physical Asset Tracking & Site Management Platform for Construction",
+  "requestFramePermissions": ["camera", "microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
