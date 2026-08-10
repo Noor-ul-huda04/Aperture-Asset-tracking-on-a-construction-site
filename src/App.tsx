@@ -20,8 +20,12 @@ import { UtilizationRentalView } from './components/UtilizationRentalView';
 import { HardwareManagementView } from './components/HardwareManagementView';
 import { ReportsAnalyticsView } from './components/ReportsAnalyticsView';
 import { MobileFieldScannerView } from './components/MobileFieldScannerView';
+import { AiEventBehaviorView } from './components/AiEventBehaviorView';
+import { MongoDbFirewallView } from './components/MongoDbFirewallView';
 import { ApiTesterModal } from './components/ApiTesterModal';
 import { HardwareSimulatorDrawer } from './components/HardwareSimulatorDrawer';
+import { QrCodeModal } from './components/QrCodeModal';
+import { PublicAssetView } from './components/PublicAssetView';
 
 import {
   fetchAssets,
@@ -94,8 +98,13 @@ export default function App() {
   const [editingAsset, setEditingAsset] = useState<Asset | null>(null);
   const [inspectingAsset, setInspectingAsset] = useState<Asset | null>(null);
   const [radarAsset, setRadarAsset] = useState<Asset | null>(null);
+  const [qrModalAsset, setQrModalAsset] = useState<Asset | null>(null);
   const [hardwareDrawerOpen, setHardwareDrawerOpen] = useState(false);
   const [apiTesterOpen, setApiTesterOpen] = useState(false);
+
+  // Public View State (from URL query ?publicAsset=ASSET_ID)
+  const initialPublicAsset = new URLSearchParams(window.location.search).get('publicAsset');
+  const [publicAssetId, setPublicAssetId] = useState<string | null>(initialPublicAsset);
 
   // Current User Persona
   const [currentUser, setCurrentUser] = useState<User>({
@@ -275,8 +284,25 @@ export default function App() {
     loadAllData();
   };
 
+  // If URL query parameter or state specifies public view mode, render PublicAssetView
+  if (publicAssetId) {
+    return (
+      <PublicAssetView
+        assetId={publicAssetId}
+        assets={assets}
+        sites={sites}
+        readEvents={readEvents}
+        checkouts={checkouts}
+        onExitPublicView={() => {
+          setPublicAssetId(null);
+          window.history.replaceState({}, '', window.location.pathname);
+        }}
+      />
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans antialiased">
+    <div className="min-h-screen bg-white text-slate-900 flex flex-col font-sans antialiased">
       
       {/* Platform Top Navigation Header */}
       <Header
@@ -326,6 +352,7 @@ export default function App() {
               sites={sites}
               onOpenRegisterModal={() => { setEditingAsset(null); setAssetFormOpen(true); }}
               onOpenDetailModal={setInspectingAsset}
+              onOpenQrModal={(a) => setQrModalAsset(a)}
               onFindRadar={setRadarAsset}
               onCheckoutAsset={() => setActiveTab('checkouts')}
               onEditAsset={(a) => { setEditingAsset(a); setAssetFormOpen(true); }}
@@ -342,7 +369,9 @@ export default function App() {
               selectedSiteId={selectedSiteId}
               onSelectSite={setSelectedSiteId}
               onOpenAssetDetail={setInspectingAsset}
+              onOpenQrModal={(a) => setQrModalAsset(a)}
               onFindRadar={setRadarAsset}
+              onRefreshData={loadAllData}
             />
           )}
 
@@ -361,6 +390,18 @@ export default function App() {
               alerts={alerts}
               onResolveAlert={handleResolveAlert}
             />
+          )}
+
+          {activeTab === 'ai_behavior' && (
+            <AiEventBehaviorView
+              events={readEvents}
+              assets={assets}
+              onRefreshData={loadAllData}
+            />
+          )}
+
+          {activeTab === 'mongo_firewall' && (
+            <MongoDbFirewallView />
           )}
 
           {activeTab === 'inventory' && (
@@ -453,6 +494,16 @@ export default function App() {
         onFindRadar={setRadarAsset}
         onCheckout={() => setActiveTab('checkouts')}
         onEdit={(a) => { setEditingAsset(a); setAssetFormOpen(true); }}
+        onOpenQrModal={(a) => setQrModalAsset(a)}
+      />
+
+      <QrCodeModal
+        asset={qrModalAsset}
+        onClose={() => setQrModalAsset(null)}
+        onOpenPublicView={(id) => {
+          setQrModalAsset(null);
+          setPublicAssetId(id);
+        }}
       />
 
       <FindAssetRadarModal

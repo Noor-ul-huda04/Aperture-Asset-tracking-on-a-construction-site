@@ -117,12 +117,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <p className="text-2xl font-black text-slate-900 font-mono mt-1">
               ${(totalValue / 1000).toFixed(1)}k
             </p>
-            <p className="text-[11px] text-emerald-600 mt-1 flex items-center gap-1 font-medium">
+            <p className="text-[11px] text-blue-600 mt-1 flex items-center gap-1 font-medium">
               <TrendingUp className="w-3.5 h-3.5" />
               <span>{totalAssets} Total Assets Tagged</span>
             </p>
           </div>
-          <div className="w-12 h-12 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-600">
+          <div className="w-12 h-12 rounded-xl bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-600">
             <DollarSign className="w-6 h-6" />
           </div>
         </div>
@@ -179,6 +179,47 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
       </div>
 
+      {/* AI Behavioral Analytics & MongoDB/Firewall Quick Launch Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div 
+          onClick={() => onNavigateTab('ai_behavior')}
+          className="bg-white hover:bg-blue-50/50 border border-slate-200 hover:border-blue-300 rounded-2xl p-5 cursor-pointer transition-all shadow-xs group flex items-center justify-between"
+        >
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-blue-50 text-blue-600 rounded-xl border border-blue-200 group-hover:scale-105 transition-transform">
+              <Activity className="w-6 h-6" />
+            </div>
+            <div>
+              <span className="text-[10px] font-mono font-bold text-blue-800 uppercase tracking-wider block">
+                AI BEHAVIOR ENGINE
+              </span>
+              <h4 className="font-bold text-slate-900 text-sm">Analyze Event Stream Behavior</h4>
+              <p className="text-xs text-slate-500 mt-0.5">Detect zone-hopping, dwell time spikes, and anomaly threat scores using Gemini AI</p>
+            </div>
+          </div>
+          <ChevronRight className="w-5 h-5 text-slate-400 group-hover:text-blue-600 group-hover:translate-x-1 transition-all" />
+        </div>
+
+        <div 
+          onClick={() => onNavigateTab('mongo_firewall')}
+          className="bg-white hover:bg-blue-50/50 border border-slate-200 hover:border-blue-300 rounded-2xl p-5 cursor-pointer transition-all shadow-xs group flex items-center justify-between"
+        >
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-blue-50 text-blue-600 rounded-xl border border-blue-200 group-hover:scale-105 transition-transform">
+              <ShieldAlert className="w-6 h-6" />
+            </div>
+            <div>
+              <span className="text-[10px] font-mono font-bold text-blue-800 uppercase tracking-wider block">
+                PRIMARY DB & SECURITY
+              </span>
+              <h4 className="font-bold text-slate-900 text-sm">MongoDB Cluster & Edge WAF Firewall</h4>
+              <p className="text-xs text-slate-500 mt-0.5">Monitor primary BSON collections and test edge firewall threat interception</p>
+            </div>
+          </div>
+          <ChevronRight className="w-5 h-5 text-slate-400 group-hover:text-blue-600 group-hover:translate-x-1 transition-all" />
+        </div>
+      </div>
+
       {/* Main Grid: Charts & Live Activity Stream */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
@@ -190,14 +231,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div>
                 <h2 className="font-bold text-base text-slate-900 flex items-center gap-2">
-                  <Activity className="w-5 h-5 text-amber-600" />
-                  <span>Asset Distribution & Status Analytics</span>
+                  <Activity className="w-5 h-5 text-blue-600" />
+                  <span>Asset Distribution & Real-Time Analytics</span>
                 </h2>
-                <p className="text-xs text-slate-500">Real-time status breakdown across all connected job sites</p>
+                <p className="text-xs text-slate-500">Live RFID status breakdown across all connected job sites</p>
               </div>
               <button
                 onClick={() => onNavigateTab('assets')}
-                className="text-xs text-amber-600 hover:text-amber-700 font-semibold flex items-center gap-1"
+                className="text-xs text-blue-600 hover:text-blue-700 font-semibold flex items-center gap-1"
               >
                 <span>View All Assets</span>
                 <ChevronRight className="w-4 h-4" />
@@ -224,13 +265,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       ))}
                     </Pie>
                     <Tooltip 
-                      contentStyle={{ backgroundColor: '#ffffff', borderColor: '#e2e8f0', borderRadius: '8px', color: '#0f172a' }}
+                      contentStyle={{ backgroundColor: '#ffffff', borderColor: '#cbd5e1', borderRadius: '8px', color: '#0f172a' }}
                     />
                   </PieChart>
                 </ResponsiveContainer>
                 <div className="absolute text-center">
                   <span className="text-xl font-bold font-mono text-slate-900">{totalAssets}</span>
-                  <span className="block text-[10px] text-slate-500 uppercase">Assets</span>
+                  <span className="block text-[10px] text-slate-500 uppercase font-mono">Assets</span>
                 </div>
               </div>
 
@@ -252,9 +293,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
           {/* Site Overview List */}
           <div className="bg-white border border-slate-200 rounded-xl p-5 space-y-4 shadow-xs">
-            <h3 className="font-bold text-sm text-slate-800 uppercase tracking-wider flex items-center justify-between">
+            <h3 className="font-bold text-sm text-slate-800 uppercase tracking-wider flex items-center justify-between font-mono">
               <span>Active Construction Sites ({sites.length})</span>
-              <button onClick={() => onNavigateTab('tracking')} className="text-xs text-amber-600 hover:underline">
+              <button onClick={() => onNavigateTab('tracking')} className="text-xs text-blue-600 hover:underline">
                 View Site Maps →
               </button>
             </h3>
@@ -264,10 +305,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 const siteAssets = assets.filter(a => a.siteId === s.id);
                 const siteValue = siteAssets.reduce((sum, a) => sum + a.cost, 0);
                 return (
-                  <div key={s.id} className="bg-slate-50 border border-slate-200 rounded-lg p-4 space-y-2 hover:border-amber-400 transition-colors">
+                  <div key={s.id} className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-2 hover:border-blue-500 transition-colors">
                     <div className="flex items-center justify-between">
                       <span className="font-bold text-sm text-slate-900">{s.name}</span>
-                      <span className="text-[10px] font-mono px-1.5 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 rounded">
+                      <span className="text-[10px] font-mono px-1.5 py-0.5 bg-blue-50 text-blue-800 border border-blue-200 rounded font-bold">
                         {s.code}
                       </span>
                     </div>
@@ -288,17 +329,18 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         <div className="bg-white border border-slate-200 rounded-xl p-5 flex flex-col h-[520px] shadow-xs">
           <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
             <div className="flex items-center gap-2">
-              <Radio className="w-5 h-5 text-amber-600 animate-pulse" />
-              <h2 className="font-bold text-base text-slate-900">Live RFID Read Stream</h2>
+              <Radio className="w-5 h-5 text-blue-600 animate-pulse" />
+              <h2 className="font-bold text-base text-slate-900">Real-Time RFID Read Stream</h2>
             </div>
-            <span className="text-[10px] font-mono bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded font-semibold">
+            <span className="text-[10px] font-mono bg-blue-50 text-blue-800 border border-blue-200 px-2 py-0.5 rounded font-bold flex items-center gap-1">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping inline-block" />
               860-960 MHz
             </span>
           </div>
 
           <div className="flex-1 overflow-y-auto space-y-3 pr-1">
             {readEvents.length === 0 ? (
-              <p className="text-xs text-slate-500 text-center py-8">Waiting for gateway RFID reads...</p>
+              <p className="text-xs text-slate-500 text-center py-8">Waiting for real-time gateway RFID reads...</p>
             ) : (
               readEvents.slice(0, 15).map((evt) => (
                 <div 
@@ -306,7 +348,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   className={`p-3 rounded-lg border text-xs space-y-1 transition-all ${
                     evt.eventType === 'GEOFENCE_BREACH'
                       ? 'bg-red-50 border-red-200 text-red-900'
-                      : 'bg-slate-50 border-slate-200 text-slate-800 hover:border-slate-300'
+                      : 'bg-slate-50 border-slate-200 text-slate-800 hover:border-blue-300'
                   }`}
                 >
                   <div className="flex items-center justify-between">
@@ -318,7 +360,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   
                   <div className="flex items-center justify-between text-[11px] text-slate-600">
                     <span className="truncate">{evt.readerName}</span>
-                    <span className="font-mono text-amber-700 font-semibold">{evt.rssi} dBm</span>
+                    <span className="font-mono text-blue-900 font-bold">{evt.rssi} dBm</span>
                   </div>
 
                   <div className="flex items-center justify-between text-[10px] font-mono pt-1 text-slate-400 border-t border-slate-200/60">
@@ -331,10 +373,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
 
           <div className="pt-3 border-t border-slate-100 mt-3 flex items-center justify-between text-xs text-slate-500">
-            <span>UHF RFID Middleware Engine</span>
+            <span className="font-mono">UHF RFID Engine</span>
             <button
               onClick={() => onNavigateTab('api')}
-              className="text-amber-600 hover:underline font-semibold"
+              className="text-blue-600 hover:underline font-semibold"
             >
               API Endpoint Log →
             </button>

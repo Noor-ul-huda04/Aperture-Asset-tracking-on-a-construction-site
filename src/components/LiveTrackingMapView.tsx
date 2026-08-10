@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { MapPin, Radio, Layers, Search, Eye, ShieldAlert, Cpu, Activity, Building2 } from 'lucide-react';
+import { MapPin, Radio, Layers, Search, Eye, ShieldAlert, Cpu, Activity, Building2, QrCode } from 'lucide-react';
 import { Asset, Site, Reader, Zone } from '../types';
 
 interface LiveTrackingMapViewProps {
@@ -10,6 +10,7 @@ interface LiveTrackingMapViewProps {
   onSelectSite: (id: string) => void;
   onOpenAssetDetail: (asset: Asset) => void;
   onFindRadar: (asset: Asset) => void;
+  onOpenQrModal?: (asset: Asset) => void;
 }
 
 export const LiveTrackingMapView: React.FC<LiveTrackingMapViewProps> = ({
@@ -19,7 +20,8 @@ export const LiveTrackingMapView: React.FC<LiveTrackingMapViewProps> = ({
   selectedSiteId,
   onSelectSite,
   onOpenAssetDetail,
-  onFindRadar
+  onFindRadar,
+  onOpenQrModal
 }) => {
   const currentSite = sites.find(s => s.id === selectedSiteId) || sites[0];
   const siteAssets = assets.filter(a => selectedSiteId === 'ALL' || a.siteId === currentSite.id);
@@ -216,9 +218,18 @@ export const LiveTrackingMapView: React.FC<LiveTrackingMapViewProps> = ({
                     </div>
 
                     <div className="flex items-center gap-2 pt-1 border-t border-slate-200">
+                      {onOpenQrModal && (
+                        <button
+                          onClick={() => onOpenQrModal(ast)}
+                          className="p-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded transition-colors"
+                          title="Generate QR Code & Secure View"
+                        >
+                          <QrCode className="w-3.5 h-3.5" />
+                        </button>
+                      )}
                       <button
                         onClick={() => onFindRadar(ast)}
-                        className="flex-1 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 font-bold text-[11px] rounded flex items-center justify-center gap-1"
+                        className="flex-1 py-1 bg-blue-600 hover:bg-blue-700 text-white font-bold text-[11px] rounded flex items-center justify-center gap-1 shadow-xs"
                       >
                         <Radio className="w-3 h-3" />
                         <span>Radar Finder</span>

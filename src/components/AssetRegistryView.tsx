@@ -18,7 +18,8 @@ import {
   CheckCircle2, 
   AlertTriangle, 
   ShieldAlert,
-  SlidersHorizontal
+  SlidersHorizontal,
+  QrCode
 } from 'lucide-react';
 import { Asset, AssetCategory, AssetStatus, Site } from '../types';
 
@@ -27,6 +28,7 @@ interface AssetRegistryViewProps {
   sites: Site[];
   onOpenRegisterModal: () => void;
   onOpenDetailModal: (asset: Asset) => void;
+  onOpenQrModal?: (asset: Asset) => void;
   onFindRadar: (asset: Asset) => void;
   onCheckoutAsset: (asset: Asset) => void;
   onEditAsset: (asset: Asset) => void;
@@ -39,6 +41,7 @@ export const AssetRegistryView: React.FC<AssetRegistryViewProps> = ({
   sites,
   onOpenRegisterModal,
   onOpenDetailModal,
+  onOpenQrModal,
   onFindRadar,
   onCheckoutAsset,
   onEditAsset,
@@ -86,29 +89,29 @@ export const AssetRegistryView: React.FC<AssetRegistryViewProps> = ({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white border border-slate-200 rounded-xl p-4 shadow-xs">
         <div>
           <h2 className="font-bold text-lg text-slate-900 flex items-center gap-2">
-            <Boxes className="w-5 h-5 text-amber-600" />
+            <Boxes className="w-5 h-5 text-blue-600" />
             <span>Physical Asset Master Registry</span>
-            <span className="text-xs bg-slate-100 text-amber-800 border border-slate-200 font-mono font-bold px-2 py-0.5 rounded-full">
-              {filteredAssets.length} / {assets.length}
+            <span className="text-xs bg-blue-50 text-blue-800 border border-blue-200 font-mono font-bold px-2.5 py-0.5 rounded-full">
+              {filteredAssets.length} / {assets.length} Tags
             </span>
           </h2>
-          <p className="text-xs text-slate-500 mt-0.5">UHF RFID tagged tools, equipment, materials, and fleet inventory</p>
+          <p className="text-xs text-slate-500 mt-0.5">Real-time UHF RFID tagged tools, equipment, materials, and fleet inventory</p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
           
           <button
             onClick={onImportCsv}
-            className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 font-semibold text-xs rounded-lg flex items-center gap-1.5 transition-colors"
+            className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 font-semibold text-xs rounded-xl flex items-center gap-1.5 transition-colors"
             title="Import Asset Fleet via CSV"
           >
-            <Upload className="w-3.5 h-3.5 text-amber-600" />
+            <Upload className="w-3.5 h-3.5 text-blue-600" />
             <span className="hidden md:inline">CSV Import</span>
           </button>
 
           <button
             onClick={handleExportCsv}
-            className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 font-semibold text-xs rounded-lg flex items-center gap-1.5 transition-colors"
+            className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 font-semibold text-xs rounded-xl flex items-center gap-1.5 transition-colors"
             title="Export Selected Assets to CSV"
           >
             <Download className="w-3.5 h-3.5 text-emerald-600" />
@@ -117,10 +120,10 @@ export const AssetRegistryView: React.FC<AssetRegistryViewProps> = ({
 
           <button
             onClick={onOpenRegisterModal}
-            className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs rounded-lg flex items-center gap-1.5 shadow-xs transition-all"
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 shadow-sm transition-all"
           >
             <Plus className="w-4 h-4 stroke-[3]" />
-            <span>Register Asset</span>
+            <span>Register Asset Tag</span>
           </button>
 
         </div>
@@ -302,9 +305,19 @@ export const AssetRegistryView: React.FC<AssetRegistryViewProps> = ({
                   <td className="py-3 px-4">
                     <div className="flex items-center justify-center gap-1.5">
                       
+                      {onOpenQrModal && (
+                        <button
+                          onClick={() => onOpenQrModal(asset)}
+                          className="p-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg transition-colors"
+                          title="Generate QR Code & Secure Link"
+                        >
+                          <QrCode className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+
                       <button
                         onClick={() => onFindRadar(asset)}
-                        className="p-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 rounded-lg transition-colors"
+                        className="p-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg transition-colors"
                         title="Proximity RSSI Radar Finder"
                       >
                         <Radio className="w-3.5 h-3.5" />
@@ -386,9 +399,18 @@ export const AssetRegistryView: React.FC<AssetRegistryViewProps> = ({
                 </div>
 
                 <div className="flex items-center gap-2 pt-2 border-t border-slate-100">
+                  {onOpenQrModal && (
+                    <button
+                      onClick={() => onOpenQrModal(asset)}
+                      className="p-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg transition-colors"
+                      title="QR Tag Code"
+                    >
+                      <QrCode className="w-3.5 h-3.5" />
+                    </button>
+                  )}
                   <button
                     onClick={() => onFindRadar(asset)}
-                    className="flex-1 py-1.5 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs rounded-lg flex items-center justify-center gap-1 shadow-xs"
+                    className="flex-1 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-lg flex items-center justify-center gap-1 shadow-xs"
                   >
                     <Radio className="w-3.5 h-3.5" />
                     <span>Radar</span>

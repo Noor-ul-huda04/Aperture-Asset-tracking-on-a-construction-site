@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, Tag, Radio, MapPin, Calendar, Clock, User, Wrench, ShieldAlert, ArrowLeftRight, Activity, DollarSign } from 'lucide-react';
+import { X, Tag, Radio, MapPin, Calendar, Clock, User, Wrench, ShieldAlert, ArrowLeftRight, Activity, DollarSign, QrCode } from 'lucide-react';
 import { Asset, ReadEvent, Checkout } from '../types';
 
 interface AssetDetailModalProps {
@@ -10,6 +10,7 @@ interface AssetDetailModalProps {
   onFindRadar: (asset: Asset) => void;
   onCheckout: (asset: Asset) => void;
   onEdit: (asset: Asset) => void;
+  onOpenQrModal?: (asset: Asset) => void;
 }
 
 export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
@@ -19,7 +20,8 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
   checkouts,
   onFindRadar,
   onCheckout,
-  onEdit
+  onEdit,
+  onOpenQrModal
 }) => {
   if (!asset) return null;
 
@@ -59,9 +61,19 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
           
           {/* Quick Action Toolbar */}
           <div className="flex flex-wrap items-center gap-3 p-3 bg-slate-950 rounded-xl border border-slate-800">
+            {onOpenQrModal && (
+              <button
+                onClick={() => { onClose(); onOpenQrModal(asset); }}
+                className="px-3.5 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg flex items-center gap-2 shadow-md shadow-blue-500/10"
+              >
+                <QrCode className="w-4 h-4" />
+                <span>QR Tag & Public Link</span>
+              </button>
+            )}
+
             <button
               onClick={() => { onClose(); onFindRadar(asset); }}
-              className="px-3.5 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-lg flex items-center gap-2 shadow-md shadow-amber-500/10"
+              className="px-3.5 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg flex items-center gap-2 shadow-md shadow-blue-500/10"
             >
               <Radio className="w-4 h-4" />
               <span>Find Asset Proximity Radar</span>
