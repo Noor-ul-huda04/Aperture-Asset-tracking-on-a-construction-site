@@ -184,6 +184,57 @@ async function startServer() {
     res.status(201).json(newAsset);
   });
 
+  app.post('/api/v1/assets/batch', (req, res) => {
+    const rawList: Partial<Asset>[] = Array.isArray(req.body.assets) ? req.body.assets : [];
+    if (rawList.length === 0) {
+      return res.status(400).json({ error: 'No assets provided for batch import' });
+    }
+
+    const createdList: Asset[] = rawList.map((body, idx) => {
+      const siteObj = db.sites.find(s => s.id === body.siteId || s.name === body.siteName) || db.sites[0];
+      const zoneObj = siteObj?.zones.find(z => z.id === body.zoneId || z.name === body.zoneName) || siteObj?.zones[0];
+
+      return {
+        id: body.id || `ast-${Date.now()}-${idx}-${Math.floor(Math.random() * 1000)}`,
+        name: body.name || `Imported Asset #${idx + 1}`,
+        category: body.category || 'Tools',
+        subCategory: body.subCategory || 'General',
+        manufacturer: body.manufacturer || 'Generic',
+        model: body.model || 'Standard',
+        serialNumber: body.serialNumber || `SN-${Math.floor(100000 + Math.random() * 900000)}`,
+        tagEpc: body.tagEpc || `E2801191A000001000000${Math.floor(100 + Math.random() * 900)}`,
+        qrCode: `QR-${Math.floor(1000 + Math.random() * 9000)}`,
+        status: body.status || 'In Zone',
+        siteId: siteObj?.id || 'site-01',
+        siteName: siteObj?.name || 'Downtown Metro Tower',
+        zoneId: zoneObj?.id || 'z-01',
+        zoneName: zoneObj?.name || 'Laydown Yard A',
+        purchaseDate: body.purchaseDate || new Date().toISOString().split('T')[0],
+        cost: Number(body.cost) || 400,
+        rentalCostPerDay: body.isRental ? Number(body.rentalCostPerDay) || 50 : undefined,
+        isRental: Boolean(body.isRental),
+        rentalEndDate: body.rentalEndDate,
+        lastSeenAt: new Date().toISOString(),
+        lastReaderId: 'reader-101',
+        rssi: -48,
+        photoUrl: body.photoUrl || 'https://images.unsplash.com/photo-1504148455328-c376907d081c?w=600',
+        condition: body.condition || 'Excellent',
+        customFields: body.customFields || {},
+        notes: body.notes || 'CSV Bulk Import'
+      };
+    });
+
+    db.assets.unshift(...createdList);
+    addAuditLog('CSV_BATCH_IMPORT', 'ASSET', 'BATCH-IMPORT', 'CSV Fleet Import', 'Admin', `Batch imported ${createdList.length} UHF RFID assets into system registry.`);
+    saveDb();
+
+    res.status(201).json({
+      success: true,
+      count: createdList.length,
+      importedAssets: createdList
+    });
+  });
+
   app.patch('/api/v1/assets/:id', (req, res) => {
     const idx = db.assets.findIndex(a => a.id === req.params.id);
     if (idx === -1) return res.status(404).json({ error: 'Asset not found' });

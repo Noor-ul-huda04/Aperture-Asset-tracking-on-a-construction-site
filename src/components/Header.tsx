@@ -13,7 +13,10 @@ import {
   ExternalLink,
   Flame,
   LogIn,
-  LogOut
+  LogOut,
+  RefreshCw,
+  CheckCircle2,
+  AlertTriangle
 } from 'lucide-react';
 import { Site, User, Alert } from '../types';
 import { useFirebaseAuth } from '../context/FirebaseAuthContext';
@@ -31,6 +34,11 @@ interface HeaderProps {
   allUsers: User[];
   isStreaming: boolean;
   offlineMode: boolean;
+  isFirestoreOnline?: boolean;
+  onManualSync?: () => void;
+  isSyncing?: boolean;
+  lastSyncedAt?: string | null;
+  onNavigateTab?: (tab: any) => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -45,7 +53,12 @@ export const Header: React.FC<HeaderProps> = ({
   onSwitchUserRole,
   allUsers,
   isStreaming,
-  offlineMode
+  offlineMode,
+  isFirestoreOnline = true,
+  onManualSync,
+  isSyncing = false,
+  lastSyncedAt,
+  onNavigateTab
 }) => {
   const unresolvedAlerts = alerts.filter(a => !a.resolved);
   const criticalCount = unresolvedAlerts.filter(a => a.severity === 'CRITICAL').length;
@@ -55,120 +68,90 @@ export const Header: React.FC<HeaderProps> = ({
     <header className="bg-slate-900 border-b border-slate-800 text-white sticky top-0 z-30 shadow-md">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
         
-        {/* Brand & Platform Identity */}
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white font-black shadow-lg shadow-blue-500/25 ring-2 ring-blue-400/20">
-            <Radio className="w-6 h-6 stroke-[2.5]" />
+        {/* Left: Brand & Site Context Selector */}
+        <div className="flex items-center gap-3 shrink-0">
+          <div className="w-9 h-9 rounded-xl bg-blue-600 flex items-center justify-center text-white font-black shadow-md shadow-blue-500/20 ring-1 ring-blue-400/30 shrink-0">
+            <Radio className="w-5 h-5 stroke-[2.5]" />
           </div>
-          <div>
+          <div className="flex flex-col justify-center">
             <div className="flex items-center gap-2">
-              <span className="font-extrabold tracking-wider text-lg text-white font-mono">APERTURE</span>
-              <span className="bg-blue-900/80 text-blue-200 border border-blue-700/60 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-widest flex items-center gap-1 font-mono">
-                <Flame className="w-3 h-3 text-blue-400 fill-blue-400" /> Express + MongoDB
+              <span className="font-black tracking-wider text-base sm:text-lg text-white font-mono whitespace-nowrap leading-tight">APERTURE</span>
+              <span className="bg-blue-900/80 text-blue-200 border border-blue-700/60 text-[10px] sm:text-[11px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider flex items-center gap-1.5 font-mono whitespace-nowrap">
+                <Flame className="w-3 h-3 text-blue-400 fill-blue-400" /> RFID UHF
               </span>
             </div>
-            <p className="text-xs text-slate-400 hidden sm:block">Real-Time Physical Asset & RFID Enterprise System</p>
+            <span className="text-[10px] text-slate-400 font-normal tracking-normal text-left whitespace-nowrap">
+              Asset tracking on construction site
+            </span>
+          </div>
+
+          {/* Site Context Selector */}
+          <div className="hidden md:flex items-center gap-1.5 bg-slate-800/80 border border-slate-700 rounded-xl px-2.5 py-1.5 shrink-0 ml-1">
+            <Building2 className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+            <select
+              value={selectedSiteId}
+              onChange={(e) => onSelectSite(e.target.value)}
+              className="bg-transparent text-xs font-semibold text-white focus:outline-none cursor-pointer truncate max-w-[140px] lg:max-w-[180px]"
+            >
+              <option value="ALL" className="bg-slate-900 text-white">All Sites (Multi-Site)</option>
+              {sites.map(s => (
+                <option key={s.id} value={s.id} className="bg-slate-900 text-white">
+                  {s.name} ({s.code})
+                </option>
+              ))}
+            </select>
           </div>
         </div>
 
-        {/* Site Context Selector */}
-        <div className="hidden md:flex items-center gap-2 bg-slate-800/80 border border-slate-700 rounded-xl px-3 py-1.5">
-          <Building2 className="w-4 h-4 text-blue-400 shrink-0" />
-          <span className="text-xs font-medium text-slate-400">Site:</span>
-          <select
-            value={selectedSiteId}
-            onChange={(e) => onSelectSite(e.target.value)}
-            className="bg-transparent text-sm font-semibold text-white focus:outline-none cursor-pointer"
-          >
-            <option value="ALL" className="bg-slate-900 text-white">All Construction Sites (Multi-Site)</option>
-            {sites.map(s => (
-              <option key={s.id} value={s.id} className="bg-slate-900 text-white">
-                {s.name} ({s.code})
-              </option>
-            ))}
-          </select>
-        </div>
+        {/* Right: Clean, Essential Actions & Status */}
+        <div className="flex items-center gap-2 shrink-0 ml-auto">
 
-        {/* Right Actions & Hardware Status */}
-        <div className="flex items-center gap-2 sm:gap-3">
+          {/* Firestore Connection Badge & Quick Sync */}
+          <div className="flex items-center gap-1 bg-slate-800/90 border border-slate-700/80 p-1 rounded-xl shrink-0">
+            <div 
+              className={`flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs font-mono font-medium border transition-all whitespace-nowrap ${
+                isFirestoreOnline
+                  ? 'bg-emerald-950/80 text-emerald-300 border-emerald-700/60'
+                  : 'bg-amber-950/80 text-amber-300 border-amber-700/60'
+              }`}
+              title={isFirestoreOnline ? 'Real-Time Cloud Connected' : 'Working in Offline Mode'}
+            >
+              <span className="relative flex h-2 w-2 shrink-0">
+                <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${isFirestoreOnline ? 'bg-emerald-400' : 'bg-amber-400'} opacity-75`}></span>
+                <span className={`relative inline-flex rounded-full h-2 w-2 ${isFirestoreOnline ? 'bg-emerald-500' : 'bg-amber-500'}`}></span>
+              </span>
+              <Database className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+              <span className="hidden sm:inline">{isFirestoreOnline ? 'Online' : 'Offline'}</span>
+            </div>
 
-          {/* Firebase Auth Controls */}
-          {authReady && (
-            fbUser ? (
-              <div className="flex items-center gap-1.5 bg-slate-800 border border-slate-700 px-2.5 py-1 rounded-xl">
-                <img src={fbUser.photoURL || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100'} className="w-5 h-5 rounded-full" alt="FB" />
-                <span className="text-[11px] font-semibold text-slate-200 hidden xl:inline truncate max-w-[100px]">
-                  {fbUser.displayName || fbUser.email}
-                </span>
-                <button
-                  onClick={signOut}
-                  className="p-1 hover:text-red-400 text-slate-400 transition-colors"
-                  title="Sign out from Firebase"
-                >
-                  <LogOut className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            ) : (
+            {onManualSync && (
               <button
-                onClick={signInWithGoogle}
-                className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-500 text-white border border-blue-500 text-xs font-semibold px-3 py-1.5 rounded-xl shadow-sm transition-colors"
-                title="Sign in with Google Firebase Auth"
+                onClick={onManualSync}
+                disabled={isSyncing}
+                className="flex items-center gap-1 bg-blue-600 hover:bg-blue-500 active:scale-95 text-white font-semibold text-xs px-2 py-1 rounded-lg transition-all shadow-xs disabled:opacity-50 shrink-0 whitespace-nowrap"
+                title={lastSyncedAt ? `Sync Firestore (Last: ${lastSyncedAt})` : 'Sync Firestore data'}
               >
-                <LogIn className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Firebase Auth</span>
+                <RefreshCw className={`w-3 h-3 ${isSyncing ? 'animate-spin' : ''}`} />
+                <span className="hidden md:inline">{isSyncing ? 'Syncing' : 'Sync'}</span>
               </button>
-            )
-          )}
-
-          {/* Real-Time Hardware RFID Stream Status Pill */}
-          <button
-            onClick={onOpenHardwareDrawer}
-            className={`hidden lg:flex items-center gap-2 text-xs font-mono px-3.5 py-1.5 rounded-xl border transition-all ${
-              offlineMode
-                ? 'bg-amber-950/60 text-amber-200 border-amber-700/60 hover:bg-amber-900/60'
-                : isStreaming
-                ? 'bg-emerald-950/80 text-emerald-300 border-emerald-700/60 hover:bg-emerald-900/80'
-                : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700'
-            }`}
-            title="Configure Real-Time RFID Hardware Middleware & Reader Stream"
-          >
-            {offlineMode ? (
-              <>
-                <WifiOff className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
-                <span>Edge Offline Buffer</span>
-              </>
-            ) : isStreaming ? (
-              <>
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                </span>
-                <Wifi className="w-3.5 h-3.5 text-emerald-400" />
-                <span>RFID Stream: Live (Real-Time)</span>
-              </>
-            ) : (
-              <>
-                <Cpu className="w-3.5 h-3.5 text-slate-400" />
-                <span>Reader Stream Paused</span>
-              </>
             )}
-          </button>
+          </div>
 
-          {/* Mobile Field Mode Switcher */}
+          {/* Handheld Field Scanner Quick Button */}
           <button
             onClick={onOpenMobileView}
-            className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-semibold px-3 py-1.5 rounded-xl transition-colors"
+            className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-semibold px-2.5 py-1.5 rounded-xl transition-colors shrink-0 whitespace-nowrap"
             title="Open Mobile Field Scanner Simulator"
           >
-            <Smartphone className="w-4 h-4 text-blue-400" />
-            <span className="hidden sm:inline">Handheld Scanner</span>
+            <Smartphone className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+            <span className="hidden lg:inline">Scanner</span>
           </button>
 
-          {/* Alerts Bell Button */}
+          {/* Active Alerts Bell Button */}
           <button
             onClick={onOpenAlertsModal}
-            className="relative p-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl border border-slate-700 transition-colors"
-            title="View Active Geofence & System Alerts"
+            className="relative p-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl border border-slate-700 transition-colors shrink-0"
+            title="View Active System Alerts"
           >
             <Bell className="w-4 h-4" />
             {unresolvedAlerts.length > 0 && (
@@ -180,24 +163,35 @@ export const Header: React.FC<HeaderProps> = ({
             )}
           </button>
 
-          {/* User Persona Switcher */}
-          <div className="relative group">
-            <button className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl px-2.5 py-1.5 transition-colors">
+          {/* User Persona & Role Switcher */}
+          <div className="relative group shrink-0">
+            <button className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl px-2 py-1.5 transition-colors">
               <img
                 src={currentUser.avatarUrl}
                 alt={currentUser.name}
-                className="w-5 h-5 rounded-full object-cover border border-blue-400"
+                className="w-5 h-5 rounded-full object-cover border border-blue-400 shrink-0"
               />
-              <span className="text-xs font-semibold text-slate-200 hidden sm:inline">{currentUser.name}</span>
-              <span className="text-[10px] bg-slate-700 text-slate-300 font-mono px-1.5 py-0.5 rounded hidden md:inline">
-                {currentUser.role}
-              </span>
+              <span className="text-xs font-semibold text-slate-200 hidden md:inline whitespace-nowrap">{currentUser.name}</span>
             </button>
 
             {/* Dropdown menu */}
-            <div className="absolute right-0 top-full mt-1 w-56 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl py-1 hidden group-hover:block z-50">
-              <div className="px-3 py-2 border-b border-slate-800 text-[11px] font-semibold text-slate-400 uppercase tracking-wider font-mono">
-                Switch Persona / Role
+            <div className="absolute right-0 top-full mt-1 w-60 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl py-1 hidden group-hover:block z-50">
+              {onNavigateTab && (
+                <div className="p-1.5 border-b border-slate-800">
+                  <button
+                    onClick={() => onNavigateTab('users')}
+                    className="w-full text-left px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-bold flex items-center justify-between transition-colors shadow-xs"
+                  >
+                    <span className="flex items-center gap-2">
+                      <UserCheck className="w-4 h-4" />
+                      User Portal & Account
+                    </span>
+                    <ExternalLink className="w-3 h-3 text-blue-200" />
+                  </button>
+                </div>
+              )}
+              <div className="px-3 py-1.5 text-[10px] font-semibold text-slate-400 uppercase tracking-wider font-mono">
+                Quick Persona Switcher
               </div>
               {allUsers.map(u => (
                 <button
@@ -208,13 +202,13 @@ export const Header: React.FC<HeaderProps> = ({
                   }`}
                 >
                   <div className="flex items-center gap-2">
-                    <img src={u.avatarUrl} className="w-5 h-5 rounded-full object-cover" />
+                    <img src={u.avatarUrl} className="w-5 h-5 rounded-full object-cover shrink-0" />
                     <div>
                       <p className="leading-none">{u.name}</p>
                       <p className="text-[10px] text-slate-400 leading-tight">{u.role}</p>
                     </div>
                   </div>
-                  {u.id === currentUser.id && <UserCheck className="w-3.5 h-3.5 text-blue-400" />}
+                  {u.id === currentUser.id && <UserCheck className="w-3.5 h-3.5 text-blue-400 shrink-0" />}
                 </button>
               ))}
             </div>

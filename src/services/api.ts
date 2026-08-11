@@ -27,6 +27,15 @@ export async function createAsset(data: Partial<Asset>): Promise<Asset> {
   return res.json();
 }
 
+export async function createAssetsBatch(assets: Partial<Asset>[]): Promise<{ count: number; importedAssets: Asset[] }> {
+  const res = await fetch(`${API_BASE}/assets/batch`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ assets })
+  });
+  return res.json();
+}
+
 export async function updateAsset(id: string, data: Partial<Asset>): Promise<Asset> {
   const res = await fetch(`${API_BASE}/assets/${id}`, {
     method: 'PATCH',

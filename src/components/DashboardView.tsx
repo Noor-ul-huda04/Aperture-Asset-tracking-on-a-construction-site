@@ -26,7 +26,9 @@ import {
   XAxis, 
   YAxis, 
   Tooltip, 
-  CartesianGrid 
+  CartesianGrid,
+  Legend,
+  ReferenceLine
 } from 'recharts';
 import { Asset, Alert, ReadEvent, Site, Checkout } from '../types';
 
@@ -78,6 +80,70 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     name: cat,
     count: categoryMap[cat]
   }));
+
+  // Site Asset Utilization data for recharts
+  const siteUtilizationData = sites.map(s => {
+    const siteAssets = assets.filter(a => a.siteId === s.id || a.siteName === s.name);
+    const total = siteAssets.length;
+    const checkedOut = siteAssets.filter(a => a.status === 'Checked Out').length;
+    const inZone = siteAssets.filter(a => a.status === 'In Zone').length;
+    const maint = siteAssets.filter(a => a.status === 'Under Maintenance').length;
+    const missing = siteAssets.filter(a => a.status === 'Missing').length;
+    const utilizationRate = total > 0 ? Math.round((checkedOut / total) * 100) : 0;
+
+    return {
+      name: s.name.length > 18 ? `${s.name.slice(0, 16)}...` : s.name,
+      fullName: s.name,
+      code: s.code,
+      utilizationRate,
+      checkedOut,
+      inZone,
+      maint,
+      missing,
+      totalAssets: total
+    };
+  });
+
+  const avgUtilizationRate = siteUtilizationData.length > 0
+    ? Math.round(siteUtilizationData.reduce((acc, curr) => acc + curr.utilizationRate, 0) / siteUtilizationData.length)
+    : 0;
+
+  const CustomUtilizationTooltip = ({ active, payload }: any) => {
+    if (active && payload && payload.length) {
+      const data = payload[0].payload;
+      return (
+        <div className="bg-slate-900 border border-slate-700 p-3 rounded-xl shadow-xl text-white text-xs space-y-1.5">
+          <div className="flex items-center justify-between gap-3 border-b border-slate-800 pb-1.5">
+            <span className="font-bold text-slate-100">{data.fullName}</span>
+            <span className="font-mono text-[10px] px-1.5 py-0.5 bg-blue-900/80 text-blue-300 rounded border border-blue-700">
+              {data.code}
+            </span>
+          </div>
+          <div className="font-mono text-[11px] space-y-1">
+            <div className="flex justify-between gap-4 text-blue-400 font-bold">
+              <span>Utilization Rate:</span>
+              <span>{data.utilizationRate}%</span>
+            </div>
+            <div className="flex justify-between gap-4 text-slate-300">
+              <span>Active Checked Out:</span>
+              <span className="font-bold">{data.checkedOut} / {data.totalAssets}</span>
+            </div>
+            <div className="flex justify-between gap-4 text-emerald-400">
+              <span>In Zone (Laydown Yard):</span>
+              <span>{data.inZone}</span>
+            </div>
+            {data.maint > 0 && (
+              <div className="flex justify-between gap-4 text-amber-400">
+                <span>Under Maintenance:</span>
+                <span>{data.maint}</span>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+    return null;
+  };
 
   return (
     <div className="space-y-6">
@@ -201,22 +267,22 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
 
         <div 
-          onClick={() => onNavigateTab('mongo_firewall')}
+          onClick={() => onNavigateTab('reports')}
           className="bg-white hover:bg-blue-50/50 border border-slate-200 hover:border-blue-300 rounded-2xl p-5 cursor-pointer transition-all shadow-xs group flex items-center justify-between"
         >
           <div className="flex items-center gap-4">
-            <div className="p-3 bg-blue-50 text-blue-600 rounded-xl border border-blue-200 group-hover:scale-105 transition-transform">
+            <div className="p-3 bg-emerald-50 text-emerald-600 rounded-xl border border-emerald-200 group-hover:scale-105 transition-transform">
               <ShieldAlert className="w-6 h-6" />
             </div>
             <div>
-              <span className="text-[10px] font-mono font-bold text-blue-800 uppercase tracking-wider block">
-                PRIMARY DB & SECURITY
+              <span className="text-[10px] font-mono font-bold text-emerald-800 uppercase tracking-wider block">
+                REPORTS & COST ANALYTICS
               </span>
-              <h4 className="font-bold text-slate-900 text-sm">MongoDB Cluster & Edge WAF Firewall</h4>
-              <p className="text-xs text-slate-500 mt-0.5">Monitor primary BSON collections and test edge firewall threat interception</p>
+              <h4 className="font-bold text-slate-900 text-sm">Asset Utilization & TCO Metrics</h4>
+              <p className="text-xs text-slate-500 mt-0.5">Generate operational lifecycle reports and track total cost of ownership across sites</p>
             </div>
           </div>
-          <ChevronRight className="w-5 h-5 text-slate-400 group-hover:text-blue-600 group-hover:translate-x-1 transition-all" />
+          <ChevronRight className="w-5 h-5 text-slate-400 group-hover:text-emerald-600 group-hover:translate-x-1 transition-all" />
         </div>
       </div>
 
@@ -288,6 +354,83 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 ))}
               </div>
 
+            </div>
+          </div>
+
+          {/* Site Asset Utilization Rate Chart (Recharts) */}
+          <div className="bg-white border border-slate-200 rounded-xl p-5 space-y-4 shadow-xs">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
+              <div>
+                <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">
+                  <TrendingUp className="w-5 h-5 text-blue-600" />
+                  <span>Site Asset Utilization Percentages</span>
+                </h3>
+                <p className="text-xs text-slate-500">Active checked-out asset utilization rates per construction job site</p>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="text-right font-mono bg-blue-50 border border-blue-200 px-3 py-1 rounded-lg">
+                  <span className="text-[10px] text-slate-500 uppercase block font-sans">Fleet Average</span>
+                  <span className="text-sm font-bold text-blue-700">{avgUtilizationRate}% Utilization</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="h-64 pt-2">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={siteUtilizationData} margin={{ top: 10, right: 10, left: -15, bottom: 20 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                  <XAxis 
+                    dataKey="name" 
+                    tick={{ fontSize: 11, fill: '#64748b' }}
+                    interval={0}
+                    angle={-10}
+                    textAnchor="end"
+                  />
+                  <YAxis 
+                    unit="%" 
+                    domain={[0, 100]} 
+                    tick={{ fontSize: 11, fill: '#64748b' }}
+                  />
+                  <Tooltip content={<CustomUtilizationTooltip />} />
+                  <ReferenceLine y={60} label={{ value: '60% Target Benchmark', fill: '#059669', fontSize: 10, position: 'insideTopRight' }} stroke="#059669" strokeDasharray="3 3" />
+                  <Bar 
+                    dataKey="utilizationRate" 
+                    name="Utilization Rate (%)" 
+                    fill="#3b82f6" 
+                    radius={[6, 6, 0, 0]} 
+                  >
+                    {siteUtilizationData.map((entry, index) => (
+                      <Cell 
+                        key={`cell-${index}`} 
+                        fill={entry.utilizationRate >= 60 ? '#2563eb' : entry.utilizationRate >= 40 ? '#0284c7' : '#f59e0b'} 
+                      />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+
+            <div className="pt-2 border-t border-slate-100 flex flex-wrap items-center justify-between text-xs text-slate-500 gap-2">
+              <div className="flex items-center gap-4 text-[11px] font-mono">
+                <span className="flex items-center gap-1.5">
+                  <span className="w-2.5 h-2.5 rounded bg-blue-600 inline-block" />
+                  <span>High (&gt;60%)</span>
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="w-2.5 h-2.5 rounded bg-sky-600 inline-block" />
+                  <span>Moderate (40-60%)</span>
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="w-2.5 h-2.5 rounded bg-amber-500 inline-block" />
+                  <span>Low (&lt;40%)</span>
+                </span>
+              </div>
+              <button 
+                onClick={() => onNavigateTab('reports')}
+                className="text-blue-600 hover:underline font-semibold"
+              >
+                Detailed Utilization Reports →
+              </button>
             </div>
           </div>
 

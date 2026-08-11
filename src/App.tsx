@@ -21,11 +21,12 @@ import { HardwareManagementView } from './components/HardwareManagementView';
 import { ReportsAnalyticsView } from './components/ReportsAnalyticsView';
 import { MobileFieldScannerView } from './components/MobileFieldScannerView';
 import { AiEventBehaviorView } from './components/AiEventBehaviorView';
-import { MongoDbFirewallView } from './components/MongoDbFirewallView';
-import { ApiTesterModal } from './components/ApiTesterModal';
+import { SettingsView } from './components/SettingsView';
+import { UserPortalView } from './components/UserPortalView';
 import { HardwareSimulatorDrawer } from './components/HardwareSimulatorDrawer';
 import { QrCodeModal } from './components/QrCodeModal';
 import { PublicAssetView } from './components/PublicAssetView';
+import { CsvImportModal } from './components/CsvImportModal';
 
 import {
   fetchAssets,
@@ -39,6 +40,7 @@ import {
   fetchUsers,
   fetchAuditLogs,
   createAsset,
+  createAssetsBatch,
   updateAsset,
   deleteAsset,
   createCheckout,
@@ -51,6 +53,7 @@ import {
 
 import {
   seedInitialFirestoreData,
+  checkFirestoreConnection,
   subscribeAssets,
   subscribeSites,
   subscribeCheckouts,
@@ -62,6 +65,7 @@ import {
   subscribeUsers,
   subscribeAuditLogs,
   createFirestoreAsset,
+  createFirestoreAssetsBatch,
   updateFirestoreAsset,
   deleteFirestoreAsset,
   createFirestoreCheckout,
@@ -93,6 +97,36 @@ export default function App() {
   const [isStreaming, setIsStreaming] = useState<boolean>(true);
   const [offlineMode, setOfflineMode] = useState<boolean>(false);
 
+  // Firestore Connection & Manual Sync State
+  const [isFirestoreOnline, setIsFirestoreOnline] = useState<boolean>(navigator.onLine);
+  const [isSyncing, setIsSyncing] = useState<boolean>(false);
+  const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(new Date().toLocaleTimeString());
+
+  // Real-time Network Connectivity Monitoring
+  useEffect(() => {
+    const handleOnline = async () => {
+      setIsFirestoreOnline(true);
+      const connected = await checkFirestoreConnection();
+      setIsFirestoreOnline(connected);
+    };
+    const handleOffline = () => {
+      setIsFirestoreOnline(false);
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    // Initial server ping check
+    checkFirestoreConnection().then(connected => {
+      setIsFirestoreOnline(connected);
+    });
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
   // Modals & Drawers
   const [assetFormOpen, setAssetFormOpen] = useState(false);
   const [editingAsset, setEditingAsset] = useState<Asset | null>(null);
@@ -100,7 +134,7 @@ export default function App() {
   const [radarAsset, setRadarAsset] = useState<Asset | null>(null);
   const [qrModalAsset, setQrModalAsset] = useState<Asset | null>(null);
   const [hardwareDrawerOpen, setHardwareDrawerOpen] = useState(false);
-  const [apiTesterOpen, setApiTesterOpen] = useState(false);
+  const [csvImportOpen, setCsvImportOpen] = useState(false);
 
   // Public View State (from URL query ?publicAsset=ASSET_ID)
   const initialPublicAsset = new URLSearchParams(window.location.search).get('publicAsset');
@@ -211,6 +245,21 @@ export default function App() {
     return () => clearInterval(interval);
   }, [loadAllData]);
 
+  // Manual Force Sync Handler
+  const handleManualSync = async () => {
+    setIsSyncing(true);
+    try {
+      const connected = await checkFirestoreConnection();
+      setIsFirestoreOnline(connected);
+      await loadAllData();
+      setLastSyncedAt(new Date().toLocaleTimeString());
+    } catch (err) {
+      console.warn('Manual sync failed:', err);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
   // Handler functions with Firestore synchronization
   const handleSaveAsset = async (data: Partial<Asset>) => {
     if (editingAsset) {
@@ -279,9 +328,12 @@ export default function App() {
     loadAllData();
   };
 
-  const handleImportCsvSimulation = () => {
-    alert('CSV Batch Import Simulation: Successfully parsed and registered 12 new UHF RFID tagged assets.');
-    loadAllData();
+  const handleBatchImportAssets = async (newAssetsList: Partial<Asset>[]) => {
+    const res = await createAssetsBatch(newAssetsList);
+    if (res?.importedAssets && res.importedAssets.length > 0) {
+      await createFirestoreAssetsBatch(res.importedAssets);
+    }
+    await loadAllData();
   };
 
   // If URL query parameter or state specifies public view mode, render PublicAssetView
@@ -318,6 +370,11 @@ export default function App() {
         allUsers={users}
         isStreaming={isStreaming}
         offlineMode={offlineMode}
+        isFirestoreOnline={isFirestoreOnline}
+        onManualSync={handleManualSync}
+        isSyncing={isSyncing}
+        lastSyncedAt={lastSyncedAt}
+        onNavigateTab={setActiveTab}
       />
 
       {/* Main Body Area: Sidebar Nav + Tab Content */}
@@ -346,6 +403,20 @@ export default function App() {
             />
           )}
 
+          {activeTab === 'users' && (
+            <UserPortalView
+              currentUser={currentUser}
+              setCurrentUser={setCurrentUser}
+              users={users}
+              sites={sites}
+              checkouts={checkouts}
+              maintenanceLogs={maintenanceLogs}
+              auditLogs={auditLogs}
+              onNavigateTab={setActiveTab}
+              onReturnCheckout={handleReturnCheckout}
+            />
+          )}
+
           {activeTab === 'assets' && (
             <AssetRegistryView
               assets={assets}
@@ -357,7 +428,7 @@ export default function App() {
               onCheckoutAsset={() => setActiveTab('checkouts')}
               onEditAsset={(a) => { setEditingAsset(a); setAssetFormOpen(true); }}
               onDeleteAsset={handleDeleteAsset}
-              onImportCsv={handleImportCsvSimulation}
+              onImportCsv={() => setCsvImportOpen(true)}
             />
           )}
 
@@ -389,6 +460,7 @@ export default function App() {
             <GeofenceAlertsView
               alerts={alerts}
               onResolveAlert={handleResolveAlert}
+              onOpenSettings={() => setActiveTab('settings')}
             />
           )}
 
@@ -398,10 +470,6 @@ export default function App() {
               assets={assets}
               onRefreshData={loadAllData}
             />
-          )}
-
-          {activeTab === 'mongo_firewall' && (
-            <MongoDbFirewallView />
           )}
 
           {activeTab === 'inventory' && (
@@ -455,22 +523,13 @@ export default function App() {
             />
           )}
 
-          {activeTab === 'api' && (
-            <div className="space-y-4">
-              <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 text-slate-200">
-                <h2 className="font-bold text-lg text-white font-mono">Aperture REST API Specification</h2>
-                <p className="text-xs text-slate-400 mt-1">Single ingestion REST endpoints for LLRP UHF Hardware Middleware</p>
-                
-                <div className="mt-4 flex gap-3">
-                  <button
-                    onClick={() => setApiTesterOpen(true)}
-                    className="px-4 py-2 bg-amber-500 text-slate-950 font-bold text-xs rounded-lg shadow-lg font-mono"
-                  >
-                    Launch Interactive API POST Tester
-                  </button>
-                </div>
-              </div>
-            </div>
+          {activeTab === 'settings' && (
+            <SettingsView
+              sites={sites}
+              currentUser={currentUser}
+              onRefreshAll={loadAllData}
+              onNavigateTab={setActiveTab}
+            />
           )}
 
         </main>
@@ -511,18 +570,19 @@ export default function App() {
         onClose={() => setRadarAsset(null)}
       />
 
-      <ApiTesterModal
-        isOpen={apiTesterOpen}
-        onClose={() => setApiTesterOpen(false)}
-        onRefreshAll={loadAllData}
-      />
-
       <HardwareSimulatorDrawer
         isOpen={hardwareDrawerOpen}
         onClose={() => setHardwareDrawerOpen(false)}
         isStreaming={isStreaming}
         offlineMode={offlineMode}
         onRefreshAll={loadAllData}
+      />
+
+      <CsvImportModal
+        isOpen={csvImportOpen}
+        onClose={() => setCsvImportOpen(false)}
+        sites={sites}
+        onImportBatch={handleBatchImportAssets}
       />
 
     </div>

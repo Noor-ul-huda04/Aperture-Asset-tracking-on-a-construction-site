@@ -79,7 +79,7 @@ export const AssetFormModal: React.FC<AssetFormModalProps> = ({
               <h2 className="font-bold text-lg text-white">
                 {initialAsset ? 'Edit Tracked Asset & RFID Tag' : 'Register New Asset & Bind UHF Tag'}
               </h2>
-              <p className="text-xs text-slate-400">Add physical item into Aperture MongoDB asset catalog</p>
+              <p className="text-xs text-slate-400">Add physical item into Aperture asset catalog</p>
             </div>
           </div>
           <button onClick={onClose} className="p-2 text-slate-400 hover:text-white rounded-lg">

@@ -15,11 +15,14 @@ import {
   Activity,
   BrainCircuit,
   Database,
-  ShieldCheck
+  ShieldCheck,
+  UserCheck,
+  Settings
 } from 'lucide-react';
 
 export type TabType = 
   | 'dashboard' 
+  | 'users'
   | 'assets' 
   | 'tracking' 
   | 'checkouts' 
@@ -30,9 +33,8 @@ export type TabType =
   | 'hardware' 
   | 'reports' 
   | 'mobile' 
-  | 'api'
   | 'ai_behavior'
-  | 'mongo_firewall';
+  | 'settings';
 
 interface SidebarNavProps {
   activeTab: TabType;
@@ -46,20 +48,20 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({
   unresolvedAlertsCount
 }) => {
   const navItems: { id: TabType; label: string; icon: React.ReactNode; badge?: number; category?: string }[] = [
-    { id: 'dashboard', label: 'Overview', icon: <LayoutDashboard className="w-4 h-4" /> },
+    { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard className="w-4 h-4" /> },
+    { id: 'users', label: 'User Portal & Login', icon: <UserCheck className="w-4 h-4" /> },
     { id: 'assets', label: 'Asset Registry', icon: <Boxes className="w-4 h-4" /> },
     { id: 'tracking', label: 'Live Map & Radar', icon: <MapPin className="w-4 h-4" /> },
     { id: 'checkouts', label: 'Check-In / Out', icon: <ArrowLeftRight className="w-4 h-4" /> },
     { id: 'geofencing', label: 'Geofence Alerts', icon: <ShieldAlert className="w-4 h-4" />, badge: unresolvedAlertsCount },
     { id: 'ai_behavior', label: 'AI Event Analytics', icon: <BrainCircuit className="w-4 h-4" /> },
-    { id: 'mongo_firewall', label: 'MongoDB & Firewall', icon: <Database className="w-4 h-4" /> },
     { id: 'inventory', label: 'Bulk Inventory', icon: <PackageSearch className="w-4 h-4" /> },
     { id: 'maintenance', label: 'Maintenance', icon: <Wrench className="w-4 h-4" /> },
     { id: 'utilization', label: 'Utilization & Rentals', icon: <TrendingUp className="w-4 h-4" /> },
     { id: 'hardware', label: 'Reader Gateways', icon: <Cpu className="w-4 h-4" /> },
     { id: 'reports', label: 'Reports & TCO', icon: <FileSpreadsheet className="w-4 h-4" /> },
     { id: 'mobile', label: 'Field Mode', icon: <Smartphone className="w-4 h-4" /> },
-    { id: 'api', label: 'API & Middleware', icon: <Terminal className="w-4 h-4" /> }
+    { id: 'settings', label: 'Settings', icon: <Settings className="w-4 h-4" /> }
   ];
 
   return (
@@ -93,14 +95,17 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({
         );
       })}
 
-      <div className="hidden md:block mt-auto pt-4 border-t border-slate-100 px-3">
-        <div className="bg-blue-50/70 border border-blue-200/80 rounded-lg p-2.5 text-[11px] text-slate-700">
-          <div className="flex items-center gap-1.5 font-mono text-blue-900 font-bold mb-1">
-            <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
-            <span>Real-time Express Engine</span>
+      <div className="hidden md:block mt-auto pt-3 border-t border-slate-100 px-2">
+        <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3 text-slate-700 space-y-1.5">
+          <div className="flex items-center justify-between text-xs font-semibold text-slate-800">
+            <span className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              Aperture Fleet System
+            </span>
+            <span className="text-[10px] font-mono text-slate-500 font-normal">v4.2</span>
           </div>
-          <p className="text-[10px] text-slate-600 leading-tight">
-            MongoDB Primary Cluster + WAF Edge Firewall Active
+          <p className="text-[11px] text-slate-500 leading-tight">
+            UHF RFID & AI Safety Tracking Operational
           </p>
         </div>
       </div>

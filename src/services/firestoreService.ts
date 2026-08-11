@@ -3,6 +3,7 @@ import {
   doc,
   getDocs,
   getDoc,
+  getDocFromServer,
   setDoc,
   updateDoc,
   deleteDoc,
@@ -23,6 +24,19 @@ import {
   INITIAL_READ_EVENTS,
   INITIAL_AUDIT_LOGS
 } from '../data/initialData';
+
+// Helper to check live Firestore server connection
+export async function checkFirestoreConnection(): Promise<boolean> {
+  if (!navigator.onLine) return false;
+  try {
+    const testDoc = doc(db, 'sites', 'site-1');
+    await getDocFromServer(testDoc);
+    return true;
+  } catch (err) {
+    console.warn('Firestore connection check result:', err);
+    return false;
+  }
+}
 
 // Seed initial data into Firestore if collection is empty
 export async function seedInitialFirestoreData() {
@@ -122,6 +136,19 @@ export async function createFirestoreAsset(data: Partial<Asset>): Promise<Asset>
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);
     throw error;
+  }
+}
+
+export async function createFirestoreAssetsBatch(assetsList: Asset[]): Promise<void> {
+  const path = 'assets';
+  try {
+    const batch = writeBatch(db);
+    assetsList.forEach(asset => {
+      batch.set(doc(db, path, asset.id), asset);
+    });
+    await batch.commit();
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, path);
   }
 }
 
@@ -415,6 +442,58 @@ export function subscribeUsers(callback: (users: User[]) => void) {
       handleFirestoreError(error, OperationType.GET, path);
     }
   );
+}
+
+export async function createFirestoreUser(userData: Partial<User>): Promise<User> {
+  const path = 'users';
+  try {
+    const newId = userData.id || `usr-${Date.now()}`;
+    const newUser: User = {
+      id: newId,
+      name: userData.name || 'New Site User',
+      email: userData.email || 'user@apertureconst.com',
+      role: userData.role || 'Field Worker',
+      siteAccess: userData.siteAccess && userData.siteAccess.length > 0 ? userData.siteAccess : ['site-1'],
+      badgeId: userData.badgeId || `BDG-${Math.floor(1000 + Math.random() * 9000)}`,
+      avatarUrl: userData.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
+      phone: userData.phone || '+1 (555) 019-2831'
+    };
+    await setDoc(doc(db, path, newId), newUser);
+    return newUser;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, path);
+    throw error;
+  }
+}
+
+export async function updateFirestoreUser(userId: string, updates: Partial<User>): Promise<void> {
+  const path = 'users';
+  try {
+    await updateDoc(doc(db, path, userId), updates);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, `${path}/${userId}`);
+    throw error;
+  }
+}
+
+export async function deleteFirestoreUser(userId: string): Promise<void> {
+  const path = 'users';
+  try {
+    await deleteDoc(doc(db, path, userId));
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, `${path}/${userId}`);
+    throw error;
+  }
+}
+
+export async function upsertFirestoreUser(user: User): Promise<void> {
+  const path = 'users';
+  try {
+    await setDoc(doc(db, path, user.id), user, { merge: true });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, `${path}/${user.id}`);
+    throw error;
+  }
 }
 
 // Audit Logs
