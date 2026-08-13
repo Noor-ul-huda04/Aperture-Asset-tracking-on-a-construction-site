@@ -17,6 +17,9 @@ import {
   Database,
   ShieldCheck,
   UserCheck,
+  History,
+  FileText,
+  Users,
   Settings
 } from 'lucide-react';
 
@@ -34,6 +37,9 @@ export type TabType =
   | 'reports' 
   | 'mobile' 
   | 'ai_behavior'
+  | 'playback'
+  | 'audit'
+  | 'developer'
   | 'settings';
 
 interface SidebarNavProps {
@@ -49,9 +55,10 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({
 }) => {
   const navItems: { id: TabType; label: string; icon: React.ReactNode; badge?: number; category?: string }[] = [
     { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard className="w-4 h-4" /> },
-    { id: 'users', label: 'User Portal & Login', icon: <UserCheck className="w-4 h-4" /> },
+    { id: 'users', label: 'People & Attendance', icon: <Users className="w-4 h-4" /> },
     { id: 'assets', label: 'Asset Registry', icon: <Boxes className="w-4 h-4" /> },
     { id: 'tracking', label: 'Live Map & Radar', icon: <MapPin className="w-4 h-4" /> },
+    { id: 'playback', label: 'Spatiotemporal Playback', icon: <History className="w-4 h-4" /> },
     { id: 'checkouts', label: 'Check-In / Out', icon: <ArrowLeftRight className="w-4 h-4" /> },
     { id: 'geofencing', label: 'Geofence Alerts', icon: <ShieldAlert className="w-4 h-4" />, badge: unresolvedAlertsCount },
     { id: 'ai_behavior', label: 'AI Event Analytics', icon: <BrainCircuit className="w-4 h-4" /> },
@@ -61,7 +68,9 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({
     { id: 'hardware', label: 'Reader Gateways', icon: <Cpu className="w-4 h-4" /> },
     { id: 'reports', label: 'Reports & TCO', icon: <FileSpreadsheet className="w-4 h-4" /> },
     { id: 'mobile', label: 'Field Mode', icon: <Smartphone className="w-4 h-4" /> },
-    { id: 'settings', label: 'Settings', icon: <Settings className="w-4 h-4" /> }
+    { id: 'audit', label: 'Security & Audit Logs', icon: <FileText className="w-4 h-4" /> },
+    { id: 'developer', label: 'Developer & GAO API', icon: <Terminal className="w-4 h-4" /> },
+    { id: 'settings', label: 'Settings & RBAC', icon: <Settings className="w-4 h-4" /> }
   ];
 
   return (

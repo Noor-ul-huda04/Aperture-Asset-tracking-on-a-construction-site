@@ -42,7 +42,7 @@ export const AiEventBehaviorView: React.FC<AiEventBehaviorViewProps> = ({
   const handleRunAiBehaviorAnalysis = async () => {
     setAnalyzing(true);
     try {
-      const res = await fetch('/api/v1/ai/analyze-behavior', {
+      const res = await fetch('/api/ai/analyze-behavior', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' }
       });
@@ -77,7 +77,7 @@ export const AiEventBehaviorView: React.FC<AiEventBehaviorViewProps> = ({
             <span className="bg-blue-50 text-blue-800 text-[10px] font-bold px-2 py-0.5 rounded-full border border-blue-200 uppercase tracking-widest font-mono">
               AI Event Analytics Engine
             </span>
-            <span className="text-xs text-slate-500 font-mono">Gemini 3.6 Flash Active</span>
+            <span className="text-xs text-slate-500 font-mono">Gemini 2.5 Flash Active</span>
           </div>
           <h1 className="text-2xl font-black text-slate-900 mt-1 flex items-center gap-2">
             <BrainCircuit className="w-7 h-7 text-blue-600" />

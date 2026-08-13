@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   DollarSign, 
   Boxes, 
@@ -14,7 +14,15 @@ import {
   ExternalLink,
   ChevronRight,
   TrendingUp,
-  Radio
+  Radio,
+  Cpu,
+  Terminal,
+  BrainCircuit,
+  Database,
+  LayoutDashboard,
+  ArrowRight,
+  Sparkles,
+  Zap
 } from 'lucide-react';
 import { 
   ResponsiveContainer, 
@@ -314,8 +322,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
               
               {/* Pie Chart */}
-              <div className="h-56 flex flex-col items-center justify-center relative">
-                <ResponsiveContainer width="100%" height="100%">
+              <div className="h-56 w-full flex flex-col items-center justify-center relative min-h-[224px]">
+                <ResponsiveContainer width="100%" height={220} minWidth={100} minHeight={200} initialDimension={{ width: 300, height: 220 }}>
                   <PieChart>
                     <Pie
                       data={statusData}
@@ -375,8 +383,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </div>
             </div>
 
-            <div className="h-64 pt-2">
-              <ResponsiveContainer width="100%" height="100%">
+            <div className="h-64 w-full pt-2 min-h-[256px]">
+              <ResponsiveContainer width="100%" height={250} minWidth={100} minHeight={200} initialDimension={{ width: 500, height: 250 }}>
                 <BarChart data={siteUtilizationData} margin={{ top: 10, right: 10, left: -15, bottom: 20 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
                   <XAxis 

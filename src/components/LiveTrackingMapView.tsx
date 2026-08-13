@@ -11,6 +11,7 @@ interface LiveTrackingMapViewProps {
   onOpenAssetDetail: (asset: Asset) => void;
   onFindRadar: (asset: Asset) => void;
   onOpenQrModal?: (asset: Asset) => void;
+  onRefreshData?: () => Promise<any> | void;
 }
 
 export const LiveTrackingMapView: React.FC<LiveTrackingMapViewProps> = ({

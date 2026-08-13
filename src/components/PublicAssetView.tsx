@@ -221,7 +221,7 @@ export const PublicAssetView: React.FC<PublicAssetViewProps> = ({
                 </div>
                 <div className="flex items-center justify-between text-[11px] text-slate-400 font-mono pt-1">
                   <span>Last Seen Timestamp</span>
-                  <span>{latestEvent ? new Date(latestEvent.timestamp).toLocaleString() : new Date(asset.lastSeen).toLocaleString()}</span>
+                  <span>{latestEvent ? new Date(latestEvent.timestamp).toLocaleString() : (asset.lastSeenAt ? new Date(asset.lastSeenAt).toLocaleString() : 'N/A')}</span>
                 </div>
               </div>
 

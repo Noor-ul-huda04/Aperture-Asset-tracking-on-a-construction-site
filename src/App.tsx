@@ -23,6 +23,9 @@ import { MobileFieldScannerView } from './components/MobileFieldScannerView';
 import { AiEventBehaviorView } from './components/AiEventBehaviorView';
 import { SettingsView } from './components/SettingsView';
 import { UserPortalView } from './components/UserPortalView';
+import { PlaybackView } from './components/PlaybackView';
+import { DeveloperApiView } from './components/DeveloperApiView';
+import { AuditLogsView } from './components/AuditLogsView';
 import { HardwareSimulatorDrawer } from './components/HardwareSimulatorDrawer';
 import { QrCodeModal } from './components/QrCodeModal';
 import { PublicAssetView } from './components/PublicAssetView';
@@ -76,22 +79,34 @@ import {
 } from './services/firestoreService';
 
 import { Asset, Site, Checkout, Alert, ReadEvent, MaintenanceLog, InventoryItem, Reader, User, AuditLog } from './types';
+import {
+  INITIAL_ASSETS,
+  INITIAL_SITES,
+  INITIAL_CHECKOUTS,
+  INITIAL_ALERTS,
+  INITIAL_READ_EVENTS,
+  INITIAL_MAINTENANCE_LOGS,
+  INITIAL_INVENTORY,
+  INITIAL_READERS,
+  INITIAL_USERS,
+  INITIAL_AUDIT_LOGS
+} from './data/initialData';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
   const [selectedSiteId, setSelectedSiteId] = useState<string>('ALL');
 
-  // Core Data Collections State
-  const [assets, setAssets] = useState<Asset[]>([]);
-  const [sites, setSites] = useState<Site[]>([]);
-  const [checkouts, setCheckouts] = useState<Checkout[]>([]);
-  const [alerts, setAlerts] = useState<Alert[]>([]);
-  const [readEvents, setReadEvents] = useState<ReadEvent[]>([]);
-  const [maintenanceLogs, setMaintenanceLogs] = useState<MaintenanceLog[]>([]);
-  const [inventory, setInventory] = useState<InventoryItem[]>([]);
-  const [readers, setReaders] = useState<Reader[]>([]);
-  const [users, setUsers] = useState<User[]>([]);
-  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
+  // Core Data Collections State (Pre-populated with default seed data for immediate visibility)
+  const [assets, setAssets] = useState<Asset[]>(INITIAL_ASSETS);
+  const [sites, setSites] = useState<Site[]>(INITIAL_SITES);
+  const [checkouts, setCheckouts] = useState<Checkout[]>(INITIAL_CHECKOUTS);
+  const [alerts, setAlerts] = useState<Alert[]>(INITIAL_ALERTS);
+  const [readEvents, setReadEvents] = useState<ReadEvent[]>(INITIAL_READ_EVENTS);
+  const [maintenanceLogs, setMaintenanceLogs] = useState<MaintenanceLog[]>(INITIAL_MAINTENANCE_LOGS);
+  const [inventory, setInventory] = useState<InventoryItem[]>(INITIAL_INVENTORY);
+  const [readers, setReaders] = useState<Reader[]>(INITIAL_READERS);
+  const [users, setUsers] = useState<User[]>(INITIAL_USERS);
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>(INITIAL_AUDIT_LOGS);
 
   // System Hardware Stream State
   const [isStreaming, setIsStreaming] = useState<boolean>(true);
@@ -205,7 +220,7 @@ export default function App() {
 
   const loadAllData = useCallback(async () => {
     try {
-      const [ast, st, chk, alt, evt, mnt, inv, rdr, usr, aud] = await Promise.all([
+      const [ast, st, chk, alt, evt, mnt, inv, rdr, usr, aud] = await Promise.allSettled([
         fetchAssets({ siteId: selectedSiteId !== 'ALL' ? selectedSiteId : undefined }),
         fetchSites(),
         fetchCheckouts(),
@@ -218,16 +233,16 @@ export default function App() {
         fetchAuditLogs()
       ]);
 
-      setAssets(ast);
-      setSites(st);
-      setCheckouts(chk);
-      setAlerts(alt);
-      setReadEvents(evt);
-      setMaintenanceLogs(mnt);
-      setInventory(inv);
-      setReaders(rdr);
-      if (usr.length > 0) setUsers(usr);
-      setAuditLogs(aud);
+      if (ast.status === 'fulfilled' && ast.value?.length > 0) setAssets(ast.value);
+      if (st.status === 'fulfilled' && st.value?.length > 0) setSites(st.value);
+      if (chk.status === 'fulfilled' && chk.value?.length > 0) setCheckouts(chk.value);
+      if (alt.status === 'fulfilled' && alt.value?.length > 0) setAlerts(alt.value);
+      if (evt.status === 'fulfilled' && evt.value?.length > 0) setReadEvents(evt.value);
+      if (mnt.status === 'fulfilled' && mnt.value?.length > 0) setMaintenanceLogs(mnt.value);
+      if (inv.status === 'fulfilled' && inv.value?.length > 0) setInventory(inv.value);
+      if (rdr.status === 'fulfilled' && rdr.value?.length > 0) setReaders(rdr.value);
+      if (usr.status === 'fulfilled' && usr.value?.length > 0) setUsers(usr.value);
+      if (aud.status === 'fulfilled' && aud.value?.length > 0) setAuditLogs(aud.value);
     } catch (err) {
       console.warn('Failed to load API data:', err);
     }
@@ -260,72 +275,100 @@ export default function App() {
     }
   };
 
-  // Handler functions with Firestore synchronization
+  // Handler functions with API primary and optional Firestore sync
   const handleSaveAsset = async (data: Partial<Asset>) => {
-    if (editingAsset) {
-      await Promise.all([
-        updateAsset(editingAsset.id, data),
-        updateFirestoreAsset(editingAsset.id, data)
-      ]);
-    } else {
-      const created = await createAsset(data);
-      await createFirestoreAsset({ ...data, id: created.id });
+    try {
+      if (editingAsset) {
+        await updateAsset(editingAsset.id, data);
+        try { await updateFirestoreAsset(editingAsset.id, data); } catch (_) {}
+      } else {
+        const created = await createAsset(data);
+        if (created?.id) {
+          try { await createFirestoreAsset({ ...data, id: created.id }); } catch (_) {}
+        }
+      }
+    } catch (err: any) {
+      console.error('Failed to save asset:', err);
+      alert(`Error saving asset: ${err.message || String(err)}`);
+    } finally {
+      setEditingAsset(null);
+      setAssetFormOpen(false);
+      await loadAllData();
     }
-    setEditingAsset(null);
-    loadAllData();
   };
 
   const handleDeleteAsset = async (id: string) => {
     if (confirm('Are you sure you want to remove this asset from Aperture catalog?')) {
-      await Promise.all([
-        deleteAsset(id),
-        deleteFirestoreAsset(id)
-      ]);
-      loadAllData();
+      try {
+        await deleteAsset(id);
+        try { await deleteFirestoreAsset(id); } catch (_) {}
+      } catch (err: any) {
+        console.error('Failed to delete asset:', err);
+        alert(`Error deleting asset: ${err.message || String(err)}`);
+      } finally {
+        await loadAllData();
+      }
     }
   };
 
   const handleCreateCheckout = async (data: { assetId: string; userId: string; jobId?: string; expectedReturnHours?: number; notes?: string }) => {
-    await Promise.all([
-      createCheckout(data),
-      createFirestoreCheckout(data)
-    ]);
-    loadAllData();
+    try {
+      await createCheckout(data);
+      try { await createFirestoreCheckout(data); } catch (_) {}
+    } catch (err: any) {
+      console.error('Failed to create checkout:', err);
+      alert(`Error creating checkout: ${err.message || String(err)}`);
+    } finally {
+      await loadAllData();
+    }
   };
 
-  const handleReturnCheckout = async (checkoutId: string, condition: string) => {
-    await Promise.all([
-      returnCheckout(checkoutId, condition),
-      returnFirestoreCheckout(checkoutId, condition)
-    ]);
-    loadAllData();
+  const handleReturnCheckout = async (checkoutId: string, condition: string = 'GOOD') => {
+    try {
+      await returnCheckout(checkoutId, condition);
+      try { await returnFirestoreCheckout(checkoutId, condition); } catch (_) {}
+    } catch (err: any) {
+      console.error('Failed to return checkout:', err);
+    } finally {
+      await loadAllData();
+    }
   };
 
   const handleResolveAlert = async (id: string) => {
-    await Promise.all([
-      resolveAlert(id, currentUser.name),
-      resolveFirestoreAlert(id, currentUser.name)
-    ]);
-    loadAllData();
+    try {
+      await resolveAlert(id, currentUser.name);
+      try { await resolveFirestoreAlert(id, currentUser.name); } catch (_) {}
+    } catch (err: any) {
+      console.error('Failed to resolve alert:', err);
+    } finally {
+      await loadAllData();
+    }
   };
 
   const handleCreateMaintenance = async (data: Partial<MaintenanceLog>) => {
-    await Promise.all([
-      createMaintenance(data),
-      createFirestoreMaintenance(data)
-    ]);
-    loadAllData();
+    try {
+      await createMaintenance(data);
+      try { await createFirestoreMaintenance(data); } catch (_) {}
+    } catch (err: any) {
+      console.error('Failed to create maintenance:', err);
+      alert(`Error creating maintenance log: ${err.message || String(err)}`);
+    } finally {
+      await loadAllData();
+    }
   };
 
   const handleUpdateInventoryQuantity = async (id: string, delta: number) => {
     const item = inventory.find(i => i.id === id);
     if (!item) return;
     const newQty = Math.max(0, item.quantityOnHand + delta);
-    await Promise.all([
-      updateInventory(id, { quantityOnHand: newQty }),
-      updateFirestoreInventory(id, { quantityOnHand: newQty })
-    ]);
-    loadAllData();
+    try {
+      await updateInventory(id, { quantityOnHand: newQty });
+      try { await updateFirestoreInventory(id, { quantityOnHand: newQty }); } catch (_) {}
+    } catch (err: any) {
+      console.error('Failed to update inventory:', err);
+    } finally {
+      await loadAllData();
+    }
   };
 
   const handleBatchImportAssets = async (newAssetsList: Partial<Asset>[]) => {
@@ -523,12 +566,24 @@ export default function App() {
             />
           )}
 
+          {activeTab === 'playback' && (
+            <PlaybackView assets={assets} />
+          )}
+
+          {activeTab === 'audit' && (
+            <AuditLogsView auditLogs={auditLogs} />
+          )}
+
+          {activeTab === 'developer' && (
+            <DeveloperApiView />
+          )}
+
           {activeTab === 'settings' && (
             <SettingsView
               sites={sites}
               currentUser={currentUser}
               onRefreshAll={loadAllData}
-              onNavigateTab={setActiveTab}
+              onNavigateTab={(tab: TabType | string) => setActiveTab(tab as TabType)}
             />
           )}
 

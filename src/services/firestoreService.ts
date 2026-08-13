@@ -10,7 +10,7 @@ import {
   onSnapshot,
   writeBatch
 } from 'firebase/firestore';
-import { db, handleFirestoreError, OperationType } from '../lib/firebase';
+import { db, handleFirestoreError, OperationType, firebaseConfig } from '../lib/firebase';
 import { Asset, Site, Checkout, Alert, ReadEvent, MaintenanceLog, InventoryItem, Reader, User, AuditLog } from '../types';
 import {
   INITIAL_ASSETS,

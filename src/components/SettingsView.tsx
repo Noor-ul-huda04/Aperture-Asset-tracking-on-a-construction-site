@@ -21,12 +21,13 @@ import {
   Radio
 } from 'lucide-react';
 import { Site, User } from '../types';
+import { TabType } from './SidebarNav';
 
 interface SettingsViewProps {
   sites: Site[];
   currentUser: User;
   onRefreshAll: () => void;
-  onNavigateTab?: (tab: string) => void;
+  onNavigateTab?: (tab: TabType | string) => void;
 }
 
 export const SettingsView: React.FC<SettingsViewProps> = ({
@@ -38,6 +39,64 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   // Page tab state inside settings: 4 clean, non-overlapping configuration tabs
   type SettingsTab = 'general' | 'notifications' | 'rfid_params' | 'database';
   const [activeSettingsTab, setActiveSettingsTab] = useState<SettingsTab>('general');
+
+  // MongoDB Atlas status state
+  const [mongoStatus, setMongoStatus] = useState<any>(null);
+  const [mongoLoading, setMongoLoading] = useState(false);
+  const [testResult, setTestResult] = useState<any>(null);
+  const [testingMongo, setTestingMongo] = useState(false);
+
+  useEffect(() => {
+    if (activeSettingsTab === 'database') {
+      fetchMongoStatus();
+    }
+  }, [activeSettingsTab]);
+
+  const fetchMongoStatus = async () => {
+    setMongoLoading(true);
+    try {
+      const res = await fetch('/api/mongodb/status');
+      if (res.ok) {
+        const data = await res.json();
+        setMongoStatus(data);
+      }
+    } catch (err) {
+      console.error('Error fetching MongoDB status:', err);
+    } finally {
+      setMongoLoading(false);
+    }
+  };
+
+  const handleSyncMongo = async () => {
+    setMongoLoading(true);
+    try {
+      await fetch('/api/mongodb/sync', { method: 'POST' });
+      await fetchMongoStatus();
+      onRefreshAll();
+    } catch (err) {
+      console.error('Sync error:', err);
+    } finally {
+      setMongoLoading(false);
+    }
+  };
+
+  const handleRunReadWriteTest = async () => {
+    setTestingMongo(true);
+    setTestResult(null);
+    try {
+      const res = await fetch('/api/mongodb/test', { method: 'POST' });
+      const data = await res.json();
+      setTestResult(data);
+      await fetchMongoStatus();
+    } catch (err: any) {
+      setTestResult({
+        success: false,
+        error: err.message || 'Failed to trigger read/write test'
+      });
+    } finally {
+      setTestingMongo(false);
+    }
+  };
 
   // Local state for configuration settings
   const [orgName, setOrgName] = useState('Apex Infrastructure Construction Corp.');
@@ -757,7 +816,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           <div className="bg-white border border-slate-200 rounded-2xl p-6 space-y-4 shadow-xs animate-fade-in">
             <h3 className="font-bold text-sm text-slate-900 uppercase tracking-wider flex items-center gap-2 border-b border-slate-100 pb-3">
               <Database className="w-4 h-4 text-purple-600" />
-              <span>Database Synchronization & Local API Status</span>
+              <span>Database Synchronization & MongoDB Atlas Status</span>
             </h3>
 
             <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 text-xs space-y-2.5 font-mono">
@@ -768,28 +827,142 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   Active (port 3000)
                 </span>
               </div>
-              <div className="flex items-center justify-between">
-                <span className="text-slate-600">Realtime Cloud Sync:</span>
-                <span className="text-emerald-700 font-bold flex items-center gap-1">
-                  <CheckCircle2 className="w-3.5 h-3.5" />
-                  Synced (Realtime Listeners On)
-                </span>
+              
+              <div className="flex items-center justify-between border-t border-slate-200/60 pt-2">
+                <span className="text-slate-600">MongoDB Atlas Connection:</span>
+                {mongoStatus?.connected ? (
+                  <span className="text-emerald-700 font-bold flex items-center gap-1 bg-emerald-100 px-2 py-0.5 rounded-md border border-emerald-300">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                    Connected ({mongoStatus.database || 'aperture_asset_db'})
+                  </span>
+                ) : mongoStatus?.error ? (
+                  <span className="text-red-700 font-bold flex items-center gap-1 bg-red-100 px-2 py-0.5 rounded-md border border-red-300">
+                    <AlertTriangle className="w-3.5 h-3.5 text-red-600" />
+                    Connection Warning
+                  </span>
+                ) : mongoStatus?.configured ? (
+                  <span className="text-amber-700 font-bold flex items-center gap-1 bg-amber-100 px-2 py-0.5 rounded-md border border-amber-300">
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin text-amber-600" />
+                    Connecting...
+                  </span>
+                ) : (
+                  <span className="text-slate-600 font-bold flex items-center gap-1 bg-slate-200 px-2 py-0.5 rounded-md">
+                    In-Memory / Local Document Store
+                  </span>
+                )}
               </div>
-              <div className="flex items-center justify-between">
+
+              {mongoStatus?.error && (
+                <div className="bg-amber-50 border border-amber-200 text-amber-900 rounded-xl p-3.5 text-xs font-sans space-y-2">
+                  <div className="flex items-start gap-2 font-semibold text-amber-950">
+                    <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                    <span>MongoDB Connection Issue Detected:</span>
+                  </div>
+                  <p className="text-[11px] leading-relaxed text-amber-800 font-mono bg-amber-100/60 p-2 rounded-lg">
+                    {mongoStatus.error}
+                  </p>
+                  <div className="pt-1 border-t border-amber-200/60 text-[11px] space-y-1">
+                    <p className="font-bold text-amber-900">How to solve SSL Alert 80 / Atlas connection blocks:</p>
+                    <ol className="list-decimal list-inside space-y-0.5 text-amber-850 font-normal">
+                      <li>Log into <a href="https://cloud.mongodb.com" target="_blank" rel="noopener noreferrer" className="underline font-bold text-amber-950">MongoDB Atlas</a></li>
+                      <li>Go to <strong>Security → Network Access</strong> in the left sidebar</li>
+                      <li>Click <strong>+ Add IP Address</strong></li>
+                      <li>Click <strong>ALLOW ACCESS FROM ANYWHERE</strong> (<code className="bg-amber-200/80 px-1 rounded font-mono">0.0.0.0/0</code>) and save</li>
+                      <li>Return here and click <strong>"Sync Atlas MongoDB"</strong> below</li>
+                    </ol>
+                  </div>
+                </div>
+              )}
+
+              {mongoStatus?.pingMs !== undefined && (
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-600">Cluster Response Ping:</span>
+                  <span className="text-blue-700 font-bold">{mongoStatus.pingMs} ms</span>
+                </div>
+              )}
+
+              <div className="flex items-center justify-between border-t border-slate-200/60 pt-2">
                 <span className="text-slate-600">Active Operator Role:</span>
                 <span className="text-blue-700 font-bold">{currentUser.name} ({currentUser.role})</span>
               </div>
             </div>
 
-            <div className="pt-2 flex justify-end">
-              <button
-                type="button"
-                onClick={onRefreshAll}
-                className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 border border-slate-300 text-slate-800 font-semibold text-xs rounded-xl flex items-center gap-2 transition-colors"
-              >
-                <RefreshCw className="w-3.5 h-3.5 text-slate-600" />
-                <span>Force Reload System Data</span>
-              </button>
+            {/* MongoDB Collections breakdown if connected */}
+            {mongoStatus?.collections && Object.keys(mongoStatus.collections).length > 0 && (
+              <div className="space-y-2 pt-2">
+                <label className="block text-xs font-bold text-slate-700 uppercase font-mono">
+                  Atlas Database Collections ({mongoStatus.database || 'aperture_asset_db'})
+                </label>
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 font-mono text-[11px]">
+                  {Object.entries(mongoStatus.collections).map(([coll, cnt]) => (
+                    <div key={coll} className="bg-purple-50/60 border border-purple-200/80 rounded-lg p-2 text-center">
+                      <div className="text-slate-500 capitalize">{coll}</div>
+                      <div className="font-black text-purple-900 text-sm">{cnt as number} docs</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Test result output */}
+            {testResult && (
+              <div className={`p-4 rounded-xl border text-xs space-y-2 font-mono ${testResult.success ? 'bg-emerald-50 border-emerald-200 text-emerald-900' : 'bg-red-50 border-red-200 text-red-900'}`}>
+                <div className="flex items-center justify-between font-bold border-b pb-2 border-emerald-200/60">
+                  <span className="flex items-center gap-1.5">
+                    {testResult.success ? <CheckCircle2 className="w-4 h-4 text-emerald-600" /> : <AlertTriangle className="w-4 h-4 text-red-600" />}
+                    MongoDB Read & Write Test: {testResult.success ? 'PASSED SUCCESSFUL' : 'FAILED'}
+                  </span>
+                  <span className="text-[10px] text-slate-500">{new Date(testResult.timestamp).toLocaleTimeString()}</span>
+                </div>
+                {testResult.testDetails && (
+                  <div className="space-y-1 pt-1 text-[11px]">
+                    <p>✓ Database: <strong>{testResult.database}</strong></p>
+                    <p>✓ Write Test: Inserted test document <code className="bg-emerald-100 px-1 rounded">{testResult.testDetails.writeTest.testId}</code></p>
+                    <p>✓ Read Test: Verified document write/retrieval in <code className="bg-emerald-100 px-1 rounded">_connection_tests</code> collection</p>
+                    <p>✓ Update Test: Updated document modifiedCount: {testResult.testDetails.updateTest.modifiedCount}</p>
+                  </div>
+                )}
+                {testResult.error && (
+                  <p className="text-red-700 font-sans text-[11px] font-semibold">{testResult.error}</p>
+                )}
+              </div>
+            )}
+
+            <div className="pt-2 flex justify-between items-center border-t border-slate-100">
+              <span className="text-[11px] text-slate-400 font-mono">
+                {mongoStatus?.lastSynced ? `Last Synced: ${new Date(mongoStatus.lastSynced).toLocaleTimeString()}` : 'Realtime Sync Active'}
+              </span>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={handleRunReadWriteTest}
+                  disabled={testingMongo}
+                  className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs rounded-xl flex items-center gap-1.5 transition-colors disabled:opacity-50"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${testingMongo ? 'animate-spin' : ''}`} />
+                  <span>{testingMongo ? 'Testing...' : 'Run Read/Write Test'}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSyncMongo}
+                  disabled={mongoLoading}
+                  className="px-3.5 py-2 bg-purple-600 hover:bg-purple-700 text-white font-semibold text-xs rounded-xl flex items-center gap-1.5 transition-colors disabled:opacity-50"
+                >
+                  <Database className="w-3.5 h-3.5" />
+                  <span>{mongoLoading ? 'Syncing...' : 'Sync Atlas MongoDB'}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    fetchMongoStatus();
+                    onRefreshAll();
+                  }}
+                  className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 border border-slate-300 text-slate-800 font-semibold text-xs rounded-xl flex items-center gap-1.5 transition-colors"
+                >
+                  <RefreshCw className="w-3.5 h-3.5 text-slate-600" />
+                  <span>Reload Data</span>
+                </button>
+              </div>
             </div>
           </div>
         )}

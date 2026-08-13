@@ -42,7 +42,7 @@ interface UserPortalViewProps {
   maintenanceLogs: MaintenanceLog[];
   auditLogs: AuditLog[];
   onNavigateTab: (tab: any) => void;
-  onReturnCheckout?: (checkoutId: string) => void;
+  onReturnCheckout?: (checkoutId: string, condition?: string) => Promise<void> | void;
 }
 
 export const UserPortalView: React.FC<UserPortalViewProps> = ({
