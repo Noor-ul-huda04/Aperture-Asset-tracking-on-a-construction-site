@@ -1,7 +1,6 @@
 import express from 'express';
 import path from 'path';
 import fs from 'fs';
-import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI } from '@google/genai';
 import {
   connectToMongoDB,
@@ -77,9 +76,26 @@ let db: DbState = {
   }
 };
 
+let mongoInitPromise: Promise<void> | null = null;
+
 export async function ensureMongoConnected() {
-  if (process.env.MONGODB_URI && (!getDb() || !isMongoConnected())) {
-    await initMongoDB();
+  if (!process.env.MONGODB_URI) return;
+  if (getDb() && isMongoConnected()) return;
+
+  if (!mongoInitPromise) {
+    mongoInitPromise = initMongoDB().catch(err => {
+      console.warn('[initMongoDB] Initial connection error:', err);
+      mongoInitPromise = null;
+    });
+  }
+
+  try {
+    await Promise.race([
+      mongoInitPromise,
+      new Promise((resolve) => setTimeout(resolve, 1500))
+    ]);
+  } catch (err) {
+    console.warn('[ensureMongoConnected] Non-blocking Mongo init warning:', err);
   }
 }
 
@@ -96,7 +112,7 @@ async function syncMongoDBOnStartup() {
 
   const collections = ['assets', 'sites', 'users', 'readers', 'checkouts', 'maintenance', 'alerts', 'inventory', 'events', 'auditLogs'];
 
-  for (const collName of collections) {
+  await Promise.all(collections.map(async (collName) => {
     try {
       const coll = mongoDb.collection(collName);
       const count = await coll.countDocuments();
@@ -104,7 +120,11 @@ async function syncMongoDBOnStartup() {
       if (count === 0) {
         const initialItems = (db as any)[collName];
         if (Array.isArray(initialItems) && initialItems.length > 0) {
-          const docsToInsert = initialItems.map((item: any) => ({ ...item, _id: item.id || item._id }));
+          const docsToInsert = initialItems.map((item: any) => {
+            const doc: any = { ...item, _id: item.id || item._id };
+            Object.keys(doc).forEach(k => { if (doc[k] === undefined) delete doc[k]; });
+            return doc;
+          });
           await coll.insertMany(docsToInsert as any[]);
           console.log(`[MongoDB] Seeded ${docsToInsert.length} initial documents into collection '${collName}'.`);
         }
@@ -120,38 +140,8 @@ async function syncMongoDBOnStartup() {
     } catch (e: any) {
       console.warn(`[MongoDB] Error syncing collection '${collName}':`, e.message);
     }
-  }
+  }));
 
-  setLastSyncedAt(new Date().toISOString());
-}
-
-async function saveToMongoDB() {
-  const mongoDb = getDb();
-  if (!mongoDb || !isMongoConnected()) return;
-
-  const collections = ['assets', 'sites', 'users', 'readers', 'checkouts', 'maintenance', 'alerts', 'inventory', 'events', 'auditLogs'];
-
-  for (const collName of collections) {
-    try {
-      const coll = mongoDb.collection(collName);
-      const items = (db as any)[collName];
-      if (Array.isArray(items)) {
-        for (const item of items) {
-          const id = item.id;
-          if (id) {
-            const { _id, ...docData } = item;
-            await coll.updateOne(
-              { id },
-              { $set: docData },
-              { upsert: true }
-            );
-          }
-        }
-      }
-    } catch (err: any) {
-      console.warn(`[MongoDB] Async sync error on collection '${collName}':`, err.message);
-    }
-  }
   setLastSyncedAt(new Date().toISOString());
 }
 
@@ -172,7 +162,6 @@ function saveDb() {
   } catch (err) {
     // Read-only environment on Vercel is ignored
   }
-  saveToMongoDB().catch(err => console.error('[MongoDB] Background save error:', err));
 }
 
 function addAuditLog(action: string, entityType: AuditLog['entityType'], entityId: string, entityName: string, userName: string, details: string) {
@@ -436,7 +425,7 @@ app.all(['/api/mongodb/test', '/api/v1/mongodb/test'], async (req, res) => {
 });
 
 // Assets - GET (Supports MongoDB Atlas direct query)
-app.get(['/api/assets', '/api/v1/assets'], async (req, res) => {
+app.get(['/api/assets', '/api/v1/assets', '/assets'], async (req, res) => {
   const mongoDb = getDb();
   let list: Asset[] = [];
 
@@ -462,7 +451,8 @@ app.get(['/api/assets', '/api/v1/assets'], async (req, res) => {
   }
 
   const { siteId, category, status, search } = req.query;
-  if (siteId && typeof siteId === 'string') {
+  console.log('[GET /api/assets] query params:', { siteId, category, status, search }, 'initial list count:', list.length);
+  if (siteId && typeof siteId === 'string' && siteId !== 'undefined' && siteId !== 'ALL' && siteId !== 'null' && siteId !== '') {
     list = list.filter(a => a.siteId === siteId);
   }
   if (category && typeof category === 'string') {
@@ -485,59 +475,73 @@ app.get(['/api/assets', '/api/v1/assets'], async (req, res) => {
 });
 
 // Assets - POST (Inserts asset into MongoDB Atlas)
-app.post(['/api/assets', '/api/v1/assets'], async (req, res) => {
-  const body = req.body;
-  const newAsset: Asset = {
-    id: body.id || `ast-${Date.now()}`,
-    name: body.name || 'Untitled Asset',
-    category: body.category || 'Tools',
-    subCategory: body.subCategory || 'General',
-    manufacturer: body.manufacturer || 'Generic',
-    model: body.model || 'Standard',
-    serialNumber: body.serialNumber || `SN-${Math.floor(100000 + Math.random() * 900000)}`,
-    tagEpc: body.tagEpc || `E2801191A000001000000${Math.floor(100 + Math.random() * 900)}`,
-    qrCode: `QR-${Math.floor(1000 + Math.random() * 9000)}`,
-    status: body.status || 'In Zone',
-    siteId: body.siteId || db.sites[0]?.id || 'site-01',
-    siteName: db.sites.find(s => s.id === body.siteId)?.name || db.sites[0]?.name || 'Downtown Metro Tower',
-    zoneId: body.zoneId || db.sites[0]?.zones[0]?.id || 'z-01',
-    zoneName: db.sites[0]?.zones?.find(z => z.id === body.zoneId)?.name || db.sites[0]?.zones[0]?.name || 'Laydown Yard A',
-    purchaseDate: body.purchaseDate || new Date().toISOString().split('T')[0],
-    cost: Number(body.cost) || 500,
-    rentalCostPerDay: body.isRental ? Number(body.rentalCostPerDay) || 50 : undefined,
-    isRental: Boolean(body.isRental),
-    rentalEndDate: body.rentalEndDate,
-    lastSeenAt: new Date().toISOString(),
-    lastReaderId: 'reader-101',
-    rssi: -50,
-    photoUrl: body.photoUrl || 'https://images.unsplash.com/photo-1504148455328-c376907d081c?w=600',
-    condition: body.condition || 'Excellent',
-    customFields: body.customFields || {},
-    notes: body.notes
-  };
+app.post(['/api/assets', '/api/v1/assets', '/assets'], async (req, res) => {
+  console.log(`[Aperture Server] POST /api/assets entry point reached. Method: ${req.method}, URL: ${req.originalUrl || req.url}`);
+  console.log(`[Aperture Server] POST /api/assets Body keys: ${Object.keys(req.body || {}).join(', ')}`);
 
-  const mongoDb = getDb();
-  if (mongoDb && isMongoConnected()) {
-    try {
-      await mongoDb.collection('assets').updateOne(
-        { id: newAsset.id },
-        { $set: { ...newAsset, _id: newAsset.id as any } },
-        { upsert: true }
-      );
-    } catch (err) {
-      console.warn('[MongoDB Asset POST Error]', err);
+  try {
+    const body = req.body || {};
+    const newAsset: Asset = {
+      id: body.id || `ast-${Date.now()}`,
+      name: body.name || 'Untitled Asset',
+      category: body.category || 'Tools',
+      subCategory: body.subCategory || 'General',
+      manufacturer: body.manufacturer || 'Generic',
+      model: body.model || 'Standard',
+      serialNumber: body.serialNumber || `SN-${Math.floor(100000 + Math.random() * 900000)}`,
+      tagEpc: body.tagEpc || `E2801191A000001000000${Math.floor(100 + Math.random() * 900)}`,
+      qrCode: `QR-${Math.floor(1000 + Math.random() * 9000)}`,
+      status: body.status || 'In Zone',
+      siteId: body.siteId || db.sites[0]?.id || 'site-01',
+      siteName: db.sites.find(s => s.id === body.siteId)?.name || db.sites[0]?.name || 'Downtown Metro Tower',
+      zoneId: body.zoneId || db.sites[0]?.zones[0]?.id || 'z-01',
+      zoneName: db.sites[0]?.zones?.find(z => z.id === body.zoneId)?.name || db.sites[0]?.zones[0]?.name || 'Laydown Yard A',
+      purchaseDate: body.purchaseDate || new Date().toISOString().split('T')[0],
+      cost: Number(body.cost) || 500,
+      rentalCostPerDay: body.isRental ? Number(body.rentalCostPerDay) || 50 : 0,
+      isRental: Boolean(body.isRental),
+      rentalEndDate: body.rentalEndDate,
+      lastSeenAt: new Date().toISOString(),
+      lastReaderId: 'reader-101',
+      rssi: -50,
+      photoUrl: body.photoUrl || 'https://images.unsplash.com/photo-1504148455328-c376907d081c?w=600',
+      condition: body.condition || 'Excellent',
+      customFields: body.customFields || {},
+      notes: body.notes
+    };
+
+    const mongoDb = getDb();
+    if (mongoDb && isMongoConnected()) {
+      try {
+        const payload: Record<string, any> = { ...newAsset, _id: newAsset.id as any };
+        Object.keys(payload).forEach(k => { if (payload[k] === undefined) delete payload[k]; });
+        await mongoDb.collection('assets').updateOne(
+          { id: newAsset.id },
+          { $set: payload },
+          { upsert: true }
+        );
+      } catch (err) {
+        console.warn('[MongoDB Asset POST Error]', err);
+      }
     }
-  }
 
-  db.assets.unshift(newAsset);
-  addAuditLog('ASSET_REGISTERED', 'ASSET', newAsset.id, newAsset.name, 'Admin', `Bound RFID tag ${newAsset.tagEpc}`);
-  saveDb();
-  res.status(201).json(newAsset);
+    db.assets.unshift(newAsset);
+    addAuditLog('ASSET_REGISTERED', 'ASSET', newAsset.id, newAsset.name, 'Admin', `Bound RFID tag ${newAsset.tagEpc}`);
+    saveDb();
+    return res.status(201).json(newAsset);
+  } catch (err: any) {
+    console.error('[Aperture Server] POST /api/assets failed:', err);
+    return res.status(500).json({
+      error: 'ASSET_CREATION_FAILED',
+      message: err?.message || 'Failed to create asset',
+      timestamp: new Date().toISOString()
+    });
+  }
 });
 
 // Assets - Batch Import (POST)
-app.post(['/api/assets/batch', '/api/v1/assets/batch'], async (req, res) => {
-  const rawList: Partial<Asset>[] = Array.isArray(req.body.assets) ? req.body.assets : [];
+app.post(['/api/assets/batch', '/api/v1/assets/batch', '/assets/batch'], async (req, res) => {
+  const rawList: Partial<Asset>[] = Array.isArray(req.body?.assets) ? req.body.assets : [];
   if (rawList.length === 0) {
     return res.status(400).json({ error: 'No assets provided for batch import' });
   }
@@ -563,7 +567,7 @@ app.post(['/api/assets/batch', '/api/v1/assets/batch'], async (req, res) => {
       zoneName: zoneObj?.name || 'Laydown Yard A',
       purchaseDate: body.purchaseDate || new Date().toISOString().split('T')[0],
       cost: Number(body.cost) || 400,
-      rentalCostPerDay: body.isRental ? Number(body.rentalCostPerDay) || 50 : undefined,
+      rentalCostPerDay: body.isRental ? Number(body.rentalCostPerDay) || 50 : 0,
       isRental: Boolean(body.isRental),
       rentalEndDate: body.rentalEndDate,
       lastSeenAt: new Date().toISOString(),
@@ -590,7 +594,7 @@ app.post(['/api/assets/batch', '/api/v1/assets/batch'], async (req, res) => {
   addAuditLog('CSV_BATCH_IMPORT', 'ASSET', 'BATCH-IMPORT', 'CSV Fleet Import', 'Admin', `Batch imported ${createdList.length} UHF RFID assets into system registry.`);
   saveDb();
 
-  res.status(201).json({
+  return res.status(201).json({
     success: true,
     count: createdList.length,
     importedAssets: createdList
@@ -598,68 +602,94 @@ app.post(['/api/assets/batch', '/api/v1/assets/batch'], async (req, res) => {
 });
 
 // Assets - PUT & PATCH (Updates asset in MongoDB Atlas)
-app.all(['/api/assets/:id', '/api/v1/assets/:id'], async (req, res, next) => {
-  if (req.method !== 'PUT' && req.method !== 'PATCH') return next();
+const handleAssetUpdate = async (req: any, res: any) => {
   const id = req.params.id;
-  const updateData = req.body;
+  console.log(`[Aperture Server] PUT/PATCH /api/assets/:id entry point reached. Method: ${req.method}, URL: ${req.originalUrl || req.url}, ID: ${id}`);
+  console.log(`[Aperture Server] PUT/PATCH /api/assets/:id Body keys: ${Object.keys(req.body || {}).join(', ')}`);
 
-  const mongoDb = getDb();
-  let updatedAsset: Asset | null = null;
+  try {
+    const updateData = req.body || {};
+    const sanitizedUpdate: Record<string, any> = { ...updateData };
+    Object.keys(sanitizedUpdate).forEach(k => { if (sanitizedUpdate[k] === undefined) delete sanitizedUpdate[k]; });
 
-  if (mongoDb && isMongoConnected()) {
-    try {
-      const coll = mongoDb.collection('assets');
-      await coll.updateOne({ id }, { $set: updateData }, { upsert: true });
-      const doc = await coll.findOne({ id });
-      if (doc) {
-        const { _id, ...rest } = doc;
-        updatedAsset = { id: doc.id || _id, ...rest } as Asset;
+    const mongoDb = getDb();
+    let updatedAsset: Asset | null = null;
+
+    if (mongoDb && isMongoConnected()) {
+      try {
+        const coll = mongoDb.collection('assets');
+        await coll.updateOne({ id }, { $set: sanitizedUpdate }, { upsert: true });
+        const doc = await coll.findOne({ id });
+        if (doc) {
+          const { _id, ...rest } = doc;
+          updatedAsset = { id: doc.id || _id, ...rest } as Asset;
+        }
+      } catch (err) {
+        console.warn('[MongoDB Asset Update Error]', err);
       }
-    } catch (err) {
-      console.warn('[MongoDB Asset Update Error]', err);
     }
-  }
 
-  const idx = db.assets.findIndex(a => a.id === id);
-  if (idx !== -1) {
-    db.assets[idx] = { ...db.assets[idx], ...updateData };
-    if (!updatedAsset) updatedAsset = db.assets[idx];
-  } else if (updatedAsset) {
-    db.assets.unshift(updatedAsset);
-  }
+    const idx = db.assets.findIndex(a => a.id === id);
+    if (idx !== -1) {
+      db.assets[idx] = { ...db.assets[idx], ...updateData };
+      if (!updatedAsset) updatedAsset = db.assets[idx];
+    } else if (updatedAsset) {
+      db.assets.unshift(updatedAsset);
+    }
 
-  if (!updatedAsset) {
-    return res.status(404).json({ error: 'Asset not found' });
-  }
+    if (!updatedAsset) {
+      return res.status(404).json({ error: 'ASSET_NOT_FOUND', message: `Asset ${id} was not found` });
+    }
 
-  addAuditLog('ASSET_UPDATED', 'ASSET', updatedAsset.id, updatedAsset.name, 'Admin', 'Updated details');
-  saveDb();
-  res.json(updatedAsset);
-});
+    addAuditLog('ASSET_UPDATED', 'ASSET', updatedAsset.id, updatedAsset.name, 'Admin', 'Updated details');
+    saveDb();
+    return res.status(200).json(updatedAsset);
+  } catch (err: any) {
+    console.error('[Aperture Server] PUT/PATCH /api/assets/:id failed:', err);
+    return res.status(500).json({
+      error: 'ASSET_UPDATE_FAILED',
+      message: err?.message || 'Failed to update asset',
+      timestamp: new Date().toISOString()
+    });
+  }
+};
+
+app.put(['/api/assets/:id', '/api/v1/assets/:id', '/assets/:id'], handleAssetUpdate);
+app.patch(['/api/assets/:id', '/api/v1/assets/:id', '/assets/:id'], handleAssetUpdate);
 
 // Assets - DELETE (Removes asset from MongoDB Atlas)
-app.delete(['/api/assets/:id', '/api/v1/assets/:id'], async (req, res) => {
+app.delete(['/api/assets/:id', '/api/v1/assets/:id', '/assets/:id'], async (req, res) => {
   const id = req.params.id;
-  const mongoDb = getDb();
+  console.log(`[Aperture Server] DELETE /api/assets/:id entry point reached. Method: ${req.method}, URL: ${req.originalUrl || req.url}, ID: ${id}`);
 
-  if (mongoDb && isMongoConnected()) {
-    try {
-      await mongoDb.collection('assets').deleteOne({ id });
-    } catch (err) {
-      console.warn('[MongoDB Asset Delete Error]', err);
+  try {
+    const mongoDb = getDb();
+    if (mongoDb && isMongoConnected()) {
+      try {
+        await mongoDb.collection('assets').deleteOne({ id });
+      } catch (err) {
+        console.warn('[MongoDB Asset Delete Error]', err);
+      }
     }
-  }
 
-  const idx = db.assets.findIndex(a => a.id === id);
-  let removedName = 'Asset';
-  if (idx !== -1) {
-    const removed = db.assets.splice(idx, 1)[0];
-    removedName = removed.name;
-  }
+    const idx = db.assets.findIndex(a => a.id === id);
+    let removedName = 'Asset';
+    if (idx !== -1) {
+      const removed = db.assets.splice(idx, 1)[0];
+      removedName = removed.name;
+    }
 
-  addAuditLog('ASSET_DELETED', 'ASSET', id, removedName, 'Admin', 'Removed from registry');
-  saveDb();
-  res.json({ message: 'Asset removed', id });
+    addAuditLog('ASSET_DELETED', 'ASSET', id, removedName, 'Admin', 'Removed from registry');
+    saveDb();
+    return res.status(200).json({ message: 'Asset removed successfully', id });
+  } catch (err: any) {
+    console.error('[Aperture Server] DELETE /api/assets/:id failed:', err);
+    return res.status(500).json({
+      error: 'ASSET_DELETE_FAILED',
+      message: err?.message || 'Failed to delete asset',
+      timestamp: new Date().toISOString()
+    });
+  }
 });
 
 // Checkouts
@@ -1327,6 +1357,15 @@ app.use((err: any, req: any, res: any, next: any) => {
   });
 });
 
+// API 404 Catch-All (Ensure unhandled API requests return JSON rather than SPA index.html)
+app.all(['/api/*', '/api', '/v1/*'], (req: any, res: any) => {
+  res.status(404).json({
+    error: 'API_ENDPOINT_NOT_FOUND',
+    message: `Cannot ${req.method} ${req.originalUrl || req.url}`,
+    timestamp: new Date().toISOString()
+  });
+});
+
 // Export App for Vercel Serverless Function Handler
 export default app;
 
@@ -1341,6 +1380,8 @@ async function startServer() {
 
     if (!isProduction) {
       console.log('[Aperture Server] Starting Vite in middleware mode...');
+
+      const { createServer: createViteServer } = await import('vite');
 
       const vite = await createViteServer({
         server: {

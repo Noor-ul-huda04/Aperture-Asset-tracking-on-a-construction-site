@@ -54,7 +54,7 @@ export const AssetFormModal: React.FC<AssetFormModalProps> = ({
       zoneName: selectedSite?.zones.find(z => z.id === zoneId)?.name || 'Laydown Yard',
       condition,
       isRental,
-      rentalCostPerDay: isRental ? Number(rentalCostPerDay) : undefined,
+      rentalCostPerDay: isRental ? Number(rentalCostPerDay) : 0,
       photoUrl,
       notes
     });

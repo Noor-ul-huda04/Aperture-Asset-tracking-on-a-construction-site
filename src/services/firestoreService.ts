@@ -3,7 +3,7 @@ import {
   doc,
   getDocs,
   getDoc,
-  getDocFromServer,
+  getDocFromCache,
   setDoc,
   updateDoc,
   deleteDoc,
@@ -30,12 +30,36 @@ export async function checkFirestoreConnection(): Promise<boolean> {
   if (!navigator.onLine) return false;
   try {
     const testDoc = doc(db, 'sites', 'site-1');
-    await getDocFromServer(testDoc);
-    return true;
-  } catch (err) {
-    console.warn('Firestore connection check result:', err);
-    return false;
+    const snap = await getDoc(testDoc);
+    return snap.exists();
+  } catch (_err) {
+    try {
+      const cacheSnap = await getDocFromCache(doc(db, 'sites', 'site-1'));
+      return cacheSnap.exists();
+    } catch (_cacheErr) {
+      return false;
+    }
   }
+}
+
+// Utility to recursively strip undefined properties before passing to Firestore
+function cleanFirestoreData<T>(data: T): T {
+  if (data === null || data === undefined) {
+    return data;
+  }
+  if (Array.isArray(data)) {
+    return data.map(item => cleanFirestoreData(item)) as unknown as T;
+  }
+  if (typeof data === 'object' && !(data instanceof Date)) {
+    const cleaned: Record<string, any> = {};
+    for (const [key, value] of Object.entries(data as Record<string, any>)) {
+      if (value !== undefined) {
+        cleaned[key] = cleanFirestoreData(value);
+      }
+    }
+    return cleaned as T;
+  }
+  return data;
 }
 
 // Seed initial data into Firestore if collection is empty
@@ -47,34 +71,34 @@ export async function seedInitialFirestoreData() {
       const batch = writeBatch(db);
       
       INITIAL_ASSETS.forEach(item => {
-        batch.set(doc(db, 'assets', item.id), item);
+        batch.set(doc(db, 'assets', item.id), cleanFirestoreData(item));
       });
       INITIAL_SITES.forEach(item => {
-        batch.set(doc(db, 'sites', item.id), item);
+        batch.set(doc(db, 'sites', item.id), cleanFirestoreData(item));
       });
       INITIAL_USERS.forEach(item => {
-        batch.set(doc(db, 'users', item.id), item);
+        batch.set(doc(db, 'users', item.id), cleanFirestoreData(item));
       });
       INITIAL_READERS.forEach(item => {
-        batch.set(doc(db, 'readers', item.id), item);
+        batch.set(doc(db, 'readers', item.id), cleanFirestoreData(item));
       });
       INITIAL_CHECKOUTS.forEach(item => {
-        batch.set(doc(db, 'checkouts', item.id), item);
+        batch.set(doc(db, 'checkouts', item.id), cleanFirestoreData(item));
       });
       INITIAL_MAINTENANCE_LOGS.forEach(item => {
-        batch.set(doc(db, 'maintenanceLogs', item.id), item);
+        batch.set(doc(db, 'maintenanceLogs', item.id), cleanFirestoreData(item));
       });
       INITIAL_ALERTS.forEach(item => {
-        batch.set(doc(db, 'alerts', item.id), item);
+        batch.set(doc(db, 'alerts', item.id), cleanFirestoreData(item));
       });
       INITIAL_INVENTORY.forEach(item => {
-        batch.set(doc(db, 'inventory', item.id), item);
+        batch.set(doc(db, 'inventory', item.id), cleanFirestoreData(item));
       });
       INITIAL_READ_EVENTS.forEach(item => {
-        batch.set(doc(db, 'readEvents', item.id), item);
+        batch.set(doc(db, 'readEvents', item.id), cleanFirestoreData(item));
       });
       INITIAL_AUDIT_LOGS.forEach(item => {
-        batch.set(doc(db, 'auditLogs', item.id), item);
+        batch.set(doc(db, 'auditLogs', item.id), cleanFirestoreData(item));
       });
 
       await batch.commit();
@@ -131,7 +155,7 @@ export async function createFirestoreAsset(data: Partial<Asset>): Promise<Asset>
       lastReaderId: data.lastReaderId || 'rdr-101',
       condition: data.condition || 'Good'
     };
-    await setDoc(doc(db, path, newId), newAsset);
+    await setDoc(doc(db, path, newId), cleanFirestoreData(newAsset));
     return newAsset;
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);
@@ -144,7 +168,7 @@ export async function createFirestoreAssetsBatch(assetsList: Asset[]): Promise<v
   try {
     const batch = writeBatch(db);
     assetsList.forEach(asset => {
-      batch.set(doc(db, path, asset.id), asset);
+      batch.set(doc(db, path, asset.id), cleanFirestoreData(asset));
     });
     await batch.commit();
   } catch (error) {
@@ -155,7 +179,7 @@ export async function createFirestoreAssetsBatch(assetsList: Asset[]): Promise<v
 export async function updateFirestoreAsset(id: string, data: Partial<Asset>): Promise<void> {
   const path = `assets/${id}`;
   try {
-    await updateDoc(doc(db, 'assets', id), data);
+    await updateDoc(doc(db, 'assets', id), cleanFirestoreData(data));
   } catch (error) {
     handleFirestoreError(error, OperationType.UPDATE, path);
   }
@@ -228,14 +252,14 @@ export async function createFirestoreCheckout(data: {
       notes: data.notes || ''
     };
 
-    await setDoc(doc(db, path, newId), newCheckout);
+    await setDoc(doc(db, path, newId), cleanFirestoreData(newCheckout));
 
     // Update asset status
     if (asset) {
-      await updateDoc(doc(db, 'assets', data.assetId), {
+      await updateDoc(doc(db, 'assets', data.assetId), cleanFirestoreData({
         status: 'Checked Out',
         lastSeenAt: now.toISOString()
-      });
+      }));
     }
 
     return newCheckout;
@@ -253,18 +277,18 @@ export async function returnFirestoreCheckout(checkoutId: string, condition: str
       const chk = chkSnap.data() as Checkout;
       const now = new Date().toISOString();
 
-      await updateDoc(doc(db, 'checkouts', checkoutId), {
+      await updateDoc(doc(db, 'checkouts', checkoutId), cleanFirestoreData({
         status: 'RETURNED',
         actualReturn: now,
         returnCondition: condition as any
-      });
+      }));
 
       // Reset asset status
-      await updateDoc(doc(db, 'assets', chk.assetId), {
+      await updateDoc(doc(db, 'assets', chk.assetId), cleanFirestoreData({
         status: 'In Zone',
         lastSeenAt: now,
         condition: condition as any
-      });
+      }));
     }
   } catch (error) {
     handleFirestoreError(error, OperationType.UPDATE, path);
@@ -292,11 +316,11 @@ export function subscribeAlerts(callback: (alerts: Alert[]) => void) {
 export async function resolveFirestoreAlert(id: string, resolvedBy: string): Promise<void> {
   const path = `alerts/${id}`;
   try {
-    await updateDoc(doc(db, 'alerts', id), {
+    await updateDoc(doc(db, 'alerts', id), cleanFirestoreData({
       resolved: true,
       resolvedBy,
       resolvedAt: new Date().toISOString()
-    });
+    }));
   } catch (error) {
     handleFirestoreError(error, OperationType.UPDATE, path);
   }
@@ -359,7 +383,7 @@ export function subscribeInventory(callback: (inventory: InventoryItem[]) => voi
 export async function updateFirestoreInventory(id: string, data: Partial<InventoryItem>): Promise<void> {
   const path = `inventory/${id}`;
   try {
-    await updateDoc(doc(db, 'inventory', id), data);
+    await updateDoc(doc(db, 'inventory', id), cleanFirestoreData(data));
   } catch (error) {
     handleFirestoreError(error, OperationType.UPDATE, path);
   }
@@ -400,7 +424,7 @@ export async function createFirestoreMaintenance(data: Partial<MaintenanceLog>):
       notes: data.notes || '',
       status: data.status || 'In Progress'
     };
-    await setDoc(doc(db, path, newId), newLog);
+    await setDoc(doc(db, path, newId), cleanFirestoreData(newLog));
     return newLog;
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);
@@ -458,7 +482,7 @@ export async function createFirestoreUser(userData: Partial<User>): Promise<User
       avatarUrl: userData.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
       phone: userData.phone || '+1 (555) 019-2831'
     };
-    await setDoc(doc(db, path, newId), newUser);
+    await setDoc(doc(db, path, newId), cleanFirestoreData(newUser));
     return newUser;
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);
@@ -469,7 +493,7 @@ export async function createFirestoreUser(userData: Partial<User>): Promise<User
 export async function updateFirestoreUser(userId: string, updates: Partial<User>): Promise<void> {
   const path = 'users';
   try {
-    await updateDoc(doc(db, path, userId), updates);
+    await updateDoc(doc(db, path, userId), cleanFirestoreData(updates));
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, `${path}/${userId}`);
     throw error;
@@ -489,7 +513,7 @@ export async function deleteFirestoreUser(userId: string): Promise<void> {
 export async function upsertFirestoreUser(user: User): Promise<void> {
   const path = 'users';
   try {
-    await setDoc(doc(db, path, user.id), user, { merge: true });
+    await setDoc(doc(db, path, user.id), cleanFirestoreData(user), { merge: true });
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, `${path}/${user.id}`);
     throw error;

@@ -49,8 +49,17 @@ export async function fetchSummary() {
 }
 
 export async function fetchAssets(params?: { siteId?: string; category?: string; status?: string; search?: string }): Promise<Asset[]> {
-  const query = new URLSearchParams(params as Record<string, string>).toString();
-  const res = await secureFetch(`${API_BASE}/assets?${query}`);
+  const cleanParams: Record<string, string> = {};
+  if (params) {
+    for (const [key, val] of Object.entries(params)) {
+      if (val !== undefined && val !== null && val !== 'undefined' && val !== 'ALL' && val !== 'null' && val !== '') {
+        cleanParams[key] = val;
+      }
+    }
+  }
+  const query = new URLSearchParams(cleanParams).toString();
+  const url = `${API_BASE}/assets${query ? `?${query}` : ''}`;
+  const res = await secureFetch(url);
   return safeJson<Asset[]>(res);
 }
 
@@ -74,7 +83,7 @@ export async function createAssetsBatch(assets: Partial<Asset>[]): Promise<{ cou
 
 export async function updateAsset(id: string, data: Partial<Asset>): Promise<Asset> {
   const res = await secureFetch(`${API_BASE}/assets/${id}`, {
-    method: 'PATCH',
+    method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data)
   });

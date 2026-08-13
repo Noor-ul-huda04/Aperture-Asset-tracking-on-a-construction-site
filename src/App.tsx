@@ -221,7 +221,7 @@ export default function App() {
   const loadAllData = useCallback(async () => {
     try {
       const [ast, st, chk, alt, evt, mnt, inv, rdr, usr, aud] = await Promise.allSettled([
-        fetchAssets({ siteId: selectedSiteId !== 'ALL' ? selectedSiteId : undefined }),
+        fetchAssets(selectedSiteId && selectedSiteId !== 'ALL' ? { siteId: selectedSiteId } : undefined),
         fetchSites(),
         fetchCheckouts(),
         fetchAlerts(),

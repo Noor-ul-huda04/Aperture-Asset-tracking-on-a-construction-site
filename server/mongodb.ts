@@ -47,54 +47,70 @@ export async function connectToMongoDB(): Promise<{ db: Db | null; connected: bo
 
   const optionsList = [
     {
-      connectTimeoutMS: 10000,
-      serverSelectionTimeoutMS: 10000,
+      connectTimeoutMS: 3000,
+      serverSelectionTimeoutMS: 3000,
+      ignoreUndefined: true,
       family: 4
     },
     {
-      connectTimeoutMS: 12000,
-      serverSelectionTimeoutMS: 12000,
+      connectTimeoutMS: 3000,
+      serverSelectionTimeoutMS: 3000,
+      ignoreUndefined: true,
       tls: true,
       tlsAllowInvalidCertificates: true,
       family: 4
     }
   ];
 
-  let lastErrMsg = '';
+  const connectTask = async () => {
+    let lastErrMsg = '';
 
-  for (let attempt = 0; attempt < optionsList.length; attempt++) {
-    try {
-      if (client) {
-        try { await client.close(); } catch (_) {}
+    for (let attempt = 0; attempt < optionsList.length; attempt++) {
+      try {
+        if (client) {
+          try { await client.close(); } catch (_) {}
+        }
+
+        client = new MongoClient(uri, optionsList[attempt]);
+        await client.connect();
+
+        dbInstance = client.db(dbName);
+        isConnected = true;
+        connectionError = null;
+        lastSyncedAt = new Date().toISOString();
+        console.log(`[MongoDB Module] Connected to Atlas database: ${dbName}`);
+
+        return { db: dbInstance, connected: true, error: null };
+      } catch (err: any) {
+        lastErrMsg = err.message || String(err);
+        console.warn(`[MongoDB Module] Connection attempt ${attempt + 1} failed:`, lastErrMsg);
       }
-
-      client = new MongoClient(uri, optionsList[attempt]);
-      await client.connect();
-
-      dbInstance = client.db(dbName);
-      isConnected = true;
-      connectionError = null;
-      lastSyncedAt = new Date().toISOString();
-      console.log(`[MongoDB Module] Connected to Atlas database: ${dbName}`);
-
-      return { db: dbInstance, connected: true, error: null };
-    } catch (err: any) {
-      lastErrMsg = err.message || String(err);
-      console.warn(`[MongoDB Module] Connection attempt ${attempt + 1} failed:`, lastErrMsg);
     }
-  }
 
-  isConnected = false;
-  
-  if (lastErrMsg.includes('SSL') || lastErrMsg.includes('tlsv1 alert') || lastErrMsg.includes('alert number 80')) {
-    connectionError = 'SSL/TLS Handshake Error (SSL Alert 80): MongoDB Atlas rejected the connection. In MongoDB Atlas Dashboard -> Network Access -> Add IP Address and set 0.0.0.0/0 (Allow access from anywhere).';
-  } else if (lastErrMsg.includes('Authentication failed') || lastErrMsg.includes('bad auth')) {
-    connectionError = 'Authentication Failed: Please verify user credentials in MONGODB_URI secret.';
-  } else {
-    connectionError = lastErrMsg;
-  }
+    isConnected = false;
+    
+    if (lastErrMsg.includes('SSL') || lastErrMsg.includes('tlsv1 alert') || lastErrMsg.includes('alert number 80')) {
+      connectionError = 'SSL/TLS Handshake Error (SSL Alert 80): MongoDB Atlas rejected the connection. In MongoDB Atlas Dashboard -> Network Access -> Add IP Address and set 0.0.0.0/0 (Allow access from anywhere).';
+    } else if (lastErrMsg.includes('Authentication failed') || lastErrMsg.includes('bad auth')) {
+      connectionError = 'Authentication Failed: Please verify user credentials in MONGODB_URI secret.';
+    } else {
+      connectionError = lastErrMsg;
+    }
 
-  return { db: null, connected: false, error: connectionError };
+    return { db: null, connected: false, error: connectionError };
+  };
+
+  const timeoutGuard = new Promise<{ db: Db | null; connected: boolean; error: string | null }>((resolve) => {
+    setTimeout(() => {
+      resolve({
+        db: null,
+        connected: false,
+        error: 'MongoDB Atlas connection timed out (3.5s limit reached). Ensure 0.0.0.0/0 is added in Atlas Network Access.'
+      });
+    }, 3500);
+  });
+
+  return Promise.race([connectTask(), timeoutGuard]);
 }
 
 export function getDb(): Db | null {
