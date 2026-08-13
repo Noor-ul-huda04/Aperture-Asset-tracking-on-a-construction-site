@@ -1,6 +1,4 @@
-const serverModule = require('../dist/server.cjs');
-const app = serverModule.app || serverModule.default || serverModule;
-const ensureMongoConnected = serverModule.ensureMongoConnected;
+import app, { ensureMongoConnected } from '../server';
 
 export default async function handler(req: any, res: any) {
   try {
