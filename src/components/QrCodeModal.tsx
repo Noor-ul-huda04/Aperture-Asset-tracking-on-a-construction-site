@@ -2,6 +2,7 @@ import React, { useRef, useState } from 'react';
 import { X, QrCode, Copy, Check, ExternalLink, Printer, Download, ShieldCheck, MapPin, Radio, Tag } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { Asset } from '../types';
+import { downloadDataUrl } from '../lib/download';
 
 interface QrCodeModalProps {
   asset: Asset | null;
@@ -40,10 +41,7 @@ export const QrCodeModal: React.FC<QrCodeModalProps> = ({ asset, onClose, onOpen
         ctx.fillRect(0, 0, 400, 400);
         ctx.drawImage(img, 20, 20, 360, 360);
         const pngFile = canvas.toDataURL('image/png');
-        const downloadLink = document.createElement('a');
-        downloadLink.download = `QR_LABEL_${asset.id}_${asset.tagEpc}.png`;
-        downloadLink.href = pngFile;
-        downloadLink.click();
+        downloadDataUrl(pngFile, `QR_LABEL_${asset.id}_${asset.tagEpc}.png`);
       }
     };
     img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData)));

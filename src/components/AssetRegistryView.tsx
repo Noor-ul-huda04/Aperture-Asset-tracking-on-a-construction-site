@@ -22,6 +22,7 @@ import {
   QrCode
 } from 'lucide-react';
 import { Asset, AssetCategory, AssetStatus, Site } from '../types';
+import { downloadFile } from '../lib/download';
 
 interface AssetRegistryViewProps {
   assets: Asset[];
@@ -74,12 +75,8 @@ export const AssetRegistryView: React.FC<AssetRegistryViewProps> = ({
     const rows = filteredAssets.map(a => 
       `"${a.id}","${a.name}","${a.category}","${a.manufacturer}","${a.model}","${a.serialNumber}","${a.tagEpc}","${a.status}","${a.siteName}","${a.zoneName}",${a.cost},"${a.condition}"`
     );
-    const blob = new Blob([...headers, ...rows.join('\n')], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `Aperture_Asset_Registry_${new Date().toISOString().split('T')[0]}.csv`;
-    link.click();
+    const csvContent = [...headers, ...rows].join('\n');
+    downloadFile(csvContent, `Aperture_Asset_Registry_${new Date().toISOString().split('T')[0]}.csv`, 'text/csv');
   };
 
   return (

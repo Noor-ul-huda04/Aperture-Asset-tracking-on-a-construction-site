@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Upload, FileSpreadsheet, CheckCircle2, AlertCircle, Trash2, Plus, Download, X } from 'lucide-react';
 import { Asset, Site } from '../types';
+import { downloadFile } from '../lib/download';
 
 interface CsvImportModalProps {
   isOpen: boolean;
@@ -167,12 +168,7 @@ export const CsvImportModal: React.FC<CsvImportModalProps> = ({
   };
 
   const handleDownloadSampleCsv = () => {
-    const blob = new Blob([SAMPLE_CSV_CONTENT], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'Aperture_Sample_Assets_Template.csv';
-    link.click();
+    downloadFile(SAMPLE_CSV_CONTENT, 'Aperture_Sample_Assets_Template.csv', 'text/csv');
   };
 
   return (

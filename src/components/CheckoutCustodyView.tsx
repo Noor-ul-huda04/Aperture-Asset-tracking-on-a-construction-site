@@ -30,7 +30,10 @@ export const CheckoutCustodyView: React.FC<CheckoutCustodyViewProps> = ({
 
   const handleCheckoutSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedAssetId || !selectedUserId) return;
+    if (!selectedAssetId || !selectedUserId) {
+      alert('Please select an asset and a user.');
+      return;
+    }
     onCreateCheckout({
       assetId: selectedAssetId,
       userId: selectedUserId,
@@ -161,8 +164,7 @@ export const CheckoutCustodyView: React.FC<CheckoutCustodyViewProps> = ({
 
             <button
               type="submit"
-              disabled={availableAssets.length === 0}
-              className="w-full py-2.5 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-lg shadow-xs transition-all flex items-center justify-center gap-2"
+              className="w-full py-2.5 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-lg shadow-xs transition-all flex items-center justify-center gap-2 cursor-pointer"
             >
               <ShieldCheck className="w-4 h-4" />
               <span>Confirm & Issue Checkout</span>

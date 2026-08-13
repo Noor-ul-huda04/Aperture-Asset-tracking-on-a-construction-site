@@ -396,6 +396,20 @@ export default function App() {
     );
   }
 
+  const filteredAssets = selectedSiteId === 'ALL' ? assets : assets.filter(a => a.siteId === selectedSiteId);
+  const filteredAlerts = selectedSiteId === 'ALL' ? alerts : alerts.filter(a => a.siteId === selectedSiteId);
+  const filteredReadEvents = selectedSiteId === 'ALL' ? readEvents : readEvents.filter(e => e.siteId === selectedSiteId);
+  const filteredCheckouts = selectedSiteId === 'ALL' ? checkouts : checkouts.filter(c => {
+    const asset = assets.find(a => a.id === c.assetId);
+    return asset && asset.siteId === selectedSiteId;
+  });
+  const filteredInventory = selectedSiteId === 'ALL' ? inventory : inventory.filter(i => i.siteId === selectedSiteId);
+  const filteredMaintenanceLogs = selectedSiteId === 'ALL' ? maintenanceLogs : maintenanceLogs.filter(m => {
+    const asset = assets.find(a => a.id === m.assetId);
+    return asset && asset.siteId === selectedSiteId;
+  });
+  const filteredReaders = selectedSiteId === 'ALL' ? readers : readers.filter(r => r.siteId === selectedSiteId);
+
   return (
     <div className="min-h-screen bg-white text-slate-900 flex flex-col font-sans antialiased">
       
@@ -435,11 +449,11 @@ export default function App() {
           
           {activeTab === 'dashboard' && (
             <DashboardView
-              assets={assets}
-              alerts={alerts}
-              readEvents={readEvents}
+              assets={filteredAssets}
+              alerts={filteredAlerts}
+              readEvents={filteredReadEvents}
               sites={sites}
-              checkouts={checkouts}
+              checkouts={filteredCheckouts}
               onNavigateTab={setActiveTab}
               onOpenAssetDetail={setInspectingAsset}
               onOpenAlertsModal={() => setActiveTab('geofencing')}
@@ -452,8 +466,8 @@ export default function App() {
               setCurrentUser={setCurrentUser}
               users={users}
               sites={sites}
-              checkouts={checkouts}
-              maintenanceLogs={maintenanceLogs}
+              checkouts={filteredCheckouts}
+              maintenanceLogs={filteredMaintenanceLogs}
               auditLogs={auditLogs}
               onNavigateTab={setActiveTab}
               onReturnCheckout={handleReturnCheckout}
@@ -462,7 +476,7 @@ export default function App() {
 
           {activeTab === 'assets' && (
             <AssetRegistryView
-              assets={assets}
+              assets={filteredAssets}
               sites={sites}
               onOpenRegisterModal={() => { setEditingAsset(null); setAssetFormOpen(true); }}
               onOpenDetailModal={setInspectingAsset}
@@ -477,9 +491,9 @@ export default function App() {
 
           {activeTab === 'tracking' && (
             <LiveTrackingMapView
-              assets={assets}
+              assets={filteredAssets}
               sites={sites}
-              readers={readers}
+              readers={filteredReaders}
               selectedSiteId={selectedSiteId}
               onSelectSite={setSelectedSiteId}
               onOpenAssetDetail={setInspectingAsset}
@@ -491,8 +505,8 @@ export default function App() {
 
           {activeTab === 'checkouts' && (
             <CheckoutCustodyView
-              checkouts={checkouts}
-              assets={assets}
+              checkouts={filteredCheckouts}
+              assets={filteredAssets}
               users={users}
               onCreateCheckout={handleCreateCheckout}
               onReturnCheckout={handleReturnCheckout}
@@ -501,7 +515,7 @@ export default function App() {
 
           {activeTab === 'geofencing' && (
             <GeofenceAlertsView
-              alerts={alerts}
+              alerts={filteredAlerts}
               onResolveAlert={handleResolveAlert}
               onOpenSettings={() => setActiveTab('settings')}
             />
@@ -509,34 +523,34 @@ export default function App() {
 
           {activeTab === 'ai_behavior' && (
             <AiEventBehaviorView
-              events={readEvents}
-              assets={assets}
+              events={filteredReadEvents}
+              assets={filteredAssets}
               onRefreshData={loadAllData}
             />
           )}
 
           {activeTab === 'inventory' && (
             <InventoryView
-              inventory={inventory}
+              inventory={filteredInventory}
               onUpdateQuantity={handleUpdateInventoryQuantity}
             />
           )}
 
           {activeTab === 'maintenance' && (
             <MaintenanceView
-              maintenanceLogs={maintenanceLogs}
-              assets={assets}
+              maintenanceLogs={filteredMaintenanceLogs}
+              assets={filteredAssets}
               onCreateMaintenance={handleCreateMaintenance}
             />
           )}
 
           {activeTab === 'utilization' && (
-            <UtilizationRentalView assets={assets} />
+            <UtilizationRentalView assets={filteredAssets} />
           )}
 
           {activeTab === 'hardware' && (
             <HardwareManagementView
-              readers={readers}
+              readers={filteredReaders}
               onUpdatePower={(id, power) => console.log('Power set:', id, power)}
               onFlushBuffer={loadAllData}
             />
@@ -544,17 +558,17 @@ export default function App() {
 
           {activeTab === 'reports' && (
             <ReportsAnalyticsView
-              assets={assets}
-              maintenanceLogs={maintenanceLogs}
+              assets={filteredAssets}
+              maintenanceLogs={filteredMaintenanceLogs}
               auditLogs={auditLogs}
             />
           )}
 
           {activeTab === 'mobile' && (
             <MobileFieldScannerView
-              assets={assets}
+              assets={filteredAssets}
               users={users}
-              checkouts={checkouts}
+              checkouts={filteredCheckouts}
               onScanCheckout={async (assetId, userId) => {
                 await createCheckout({ assetId, userId, jobId: 'job-mobile-field' });
                 loadAllData();
@@ -567,7 +581,7 @@ export default function App() {
           )}
 
           {activeTab === 'playback' && (
-            <PlaybackView assets={assets} />
+            <PlaybackView assets={filteredAssets} />
           )}
 
           {activeTab === 'audit' && (

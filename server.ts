@@ -9,7 +9,7 @@ import {
   getMongoError,
   getLastSyncedAt,
   setLastSyncedAt
-} from './server/mongodb.ts';
+} from './server/mongodb';
 import {
   INITIAL_ASSETS,
   INITIAL_SITES,
@@ -21,8 +21,8 @@ import {
   INITIAL_INVENTORY,
   INITIAL_READ_EVENTS,
   INITIAL_AUDIT_LOGS
-} from './src/data/initialData.ts';
-import { Asset, Checkout, Alert, ReadEvent, MaintenanceLog, Reader, Site, InventoryItem, User, AuditLog } from './src/types.ts';
+} from './src/data/initialData';
+import { Asset, Checkout, Alert, ReadEvent, MaintenanceLog, Reader, Site, InventoryItem, User, AuditLog } from './src/types';
 
 let aiClient: GoogleGenAI | null = null;
 function getAiClient(): GoogleGenAI | null {
@@ -319,7 +319,11 @@ app.use(async (req, res, next) => {
 // Middleware to ensure Mongo Connection on every API call
 app.use(async (req, res, next) => {
   if (req.url.startsWith('/api')) {
-    await ensureMongoConnected();
+    try {
+      await ensureMongoConnected();
+    } catch (err) {
+      console.warn('[MongoDB Middleware] Connection warning (falling back to in-memory store):', err);
+    }
   }
   next();
 });

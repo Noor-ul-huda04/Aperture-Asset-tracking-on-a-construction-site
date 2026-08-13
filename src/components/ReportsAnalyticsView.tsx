@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { FileSpreadsheet, Download, Printer, TrendingUp, DollarSign, PieChart as PieIcon, ShieldCheck, CheckCircle2, FileText, X } from 'lucide-react';
 import { Asset, MaintenanceLog, AuditLog } from '../types';
+import { downloadFile } from '../lib/download';
 
 interface ReportsAnalyticsViewProps {
   assets: Asset[];
@@ -143,12 +144,7 @@ export const ReportsAnalyticsView: React.FC<ReportsAnalyticsViewProps> = ({
 </body>
 </html>`;
 
-    const blob = new Blob([htmlContent], { type: 'text/html' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `Aperture_Executive_TCO_Report_${dateStr}.html`;
-    link.click();
+    downloadFile(htmlContent, `Aperture_Executive_TCO_Report_${dateStr}.html`, 'text/html');
 
     setExportSuccess('HTML/PDF Printable Report downloaded successfully!');
     setTimeout(() => setExportSuccess(null), 3000);
@@ -193,12 +189,7 @@ export const ReportsAnalyticsView: React.FC<ReportsAnalyticsViewProps> = ({
     ];
 
     const csvContent = rows.map(r => r.join(',')).join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `Aperture_Asset_TCO_Report_${dateStr}.csv`;
-    link.click();
+    downloadFile(csvContent, `Aperture_Asset_TCO_Report_${dateStr}.csv`, 'text/csv');
 
     setExportSuccess('Executive CSV Report downloaded successfully!');
     setTimeout(() => setExportSuccess(null), 3000);
