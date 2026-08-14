@@ -182,6 +182,24 @@ function addAuditLog(action: string, entityType: AuditLog['entityType'], entityI
 
 // Instantiate Express App
 export const app = express();
+app.set('etag', false);
+app.disable('x-powered-by');
+
+export function setNoCacheHeaders(res: any) {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.setHeader('Surrogate-Control', 'no-store');
+}
+
+// Global no-cache header middleware for all API requests
+app.use((req, res, next) => {
+  if (req.url.startsWith('/api') || req.originalUrl?.startsWith('/api') || req.path?.startsWith('/api')) {
+    setNoCacheHeaders(res);
+  }
+  next();
+});
+
 app.use(express.json({ limit: '10mb' }) as any);
 app.use(express.urlencoded({ extended: true, limit: '10mb' }) as any);
 
@@ -419,6 +437,7 @@ app.all(['/api/mongodb/test', '/api/v1/mongodb/test'], async (req, res) => {
 
 // Assets - GET (Supports MongoDB Atlas direct query)
 app.get(['/api/assets', '/api/v1/assets', '/assets'], async (req, res) => {
+  setNoCacheHeaders(res);
   const mongoDb = getDb();
   let list: Asset[] = [];
 
@@ -692,6 +711,7 @@ app.delete(['/api/assets/:id', '/api/v1/assets/:id', '/assets/:id'], async (req,
 
 // Checkouts
 app.get(['/api/checkouts', '/api/v1/checkouts'], (req, res) => {
+  setNoCacheHeaders(res);
   res.json(db.checkouts);
 });
 
@@ -835,11 +855,13 @@ app.post(['/api/events/scan', '/api/v1/events/scan'], async (req, res) => {
 });
 
 app.get(['/api/events', '/api/v1/events'], (req, res) => {
+  setNoCacheHeaders(res);
   res.json(db.events);
 });
 
 // Alerts
 app.get(['/api/alerts', '/api/v1/alerts'], (req, res) => {
+  setNoCacheHeaders(res);
   res.json(db.alerts);
 });
 
@@ -898,7 +920,10 @@ app.patch(['/api/alerts/:id/resolve', '/api/v1/alerts/:id/resolve'], async (req,
 });
 
 // Sites
-app.get(['/api/sites', '/api/v1/sites'], (req, res) => res.json(db.sites));
+app.get(['/api/sites', '/api/v1/sites'], (req, res) => {
+  setNoCacheHeaders(res);
+  res.json(db.sites);
+});
 app.post(['/api/sites', '/api/v1/sites'], (req, res) => {
   const newSite: Site = {
     id: `site-${Date.now()}`,
@@ -917,7 +942,10 @@ app.post(['/api/sites', '/api/v1/sites'], (req, res) => {
 });
 
 // Readers
-app.get(['/api/readers', '/api/v1/readers'], (req, res) => res.json(db.readers));
+app.get(['/api/readers', '/api/v1/readers'], (req, res) => {
+  setNoCacheHeaders(res);
+  res.json(db.readers);
+});
 app.post(['/api/readers', '/api/v1/readers'], (req, res) => {
   const newReader: Reader = {
     id: `reader-${Date.now()}`,
@@ -941,7 +969,10 @@ app.post(['/api/readers', '/api/v1/readers'], (req, res) => {
 });
 
 // Maintenance
-app.get(['/api/maintenance', '/api/v1/maintenance'], (req, res) => res.json(db.maintenance));
+app.get(['/api/maintenance', '/api/v1/maintenance'], (req, res) => {
+  setNoCacheHeaders(res);
+  res.json(db.maintenance);
+});
 app.post(['/api/maintenance', '/api/v1/maintenance'], (req, res) => {
   const newMaint: MaintenanceLog = {
     id: `maint-${Date.now()}`,
@@ -962,7 +993,10 @@ app.post(['/api/maintenance', '/api/v1/maintenance'], (req, res) => {
 });
 
 // Inventory
-app.get(['/api/inventory', '/api/v1/inventory'], (req, res) => res.json(db.inventory));
+app.get(['/api/inventory', '/api/v1/inventory'], (req, res) => {
+  setNoCacheHeaders(res);
+  res.json(db.inventory);
+});
 app.patch(['/api/inventory/:id', '/api/v1/inventory/:id'], (req, res) => {
   const item = db.inventory.find(i => i.id === req.params.id);
   if (!item) return res.status(404).json({ error: 'Item not found' });
@@ -972,7 +1006,10 @@ app.patch(['/api/inventory/:id', '/api/v1/inventory/:id'], (req, res) => {
 });
 
 // Users & Audit Logs
-app.get(['/api/users', '/api/v1/users'], (req, res) => res.json(db.users));
+app.get(['/api/users', '/api/v1/users'], (req, res) => {
+  setNoCacheHeaders(res);
+  res.json(db.users);
+});
 app.post(['/api/users', '/api/v1/users'], (req, res) => {
   const newUser: User = {
     id: `usr-${Date.now()}`,
@@ -990,10 +1027,14 @@ app.post(['/api/users', '/api/v1/users'], (req, res) => {
   res.status(201).json(newUser);
 });
 
-app.get(['/api/audit-logs', '/api/v1/audit-logs'], (req, res) => res.json(db.auditLogs));
+app.get(['/api/audit-logs', '/api/v1/audit-logs'], (req, res) => {
+  setNoCacheHeaders(res);
+  res.json(db.auditLogs);
+});
 
 // Executive Summary Report
 app.get(['/api/reports/summary', '/api/v1/reports/summary'], (req, res) => {
+  setNoCacheHeaders(res);
   const totalAssetValue = db.assets.reduce((sum, a) => sum + (a.cost || 0), 0);
   const checkedOutCount = db.assets.filter(a => a.status === 'Checked Out').length;
   const inZoneCount = db.assets.filter(a => a.status === 'In Zone').length;
@@ -1172,6 +1213,7 @@ app.post(['/api/gao/read-tags', '/api/v1/rfid/read', '/api/aperture/read'], asyn
 
 // GAO Tag Inventory Query Endpoint
 app.get(['/api/gao/read-tags', '/api/v1/rfid/tags'], (req, res) => {
+  setNoCacheHeaders(res);
   const tagList = db.assets.map(a => ({
     tagEpc: a.tagEpc,
     assetId: a.id,
@@ -1220,6 +1262,7 @@ app.post(['/api/auth/login', '/api/v1/auth/login'], (req, res) => {
 });
 
 app.get(['/api/auth/roles', '/api/v1/auth/roles'], (req, res) => {
+  setNoCacheHeaders(res);
   res.json({
     roles: [
       { name: 'Administrator', accessLevel: 'FULL_CONTROL', description: 'Complete system access, hardware tuning, RBAC management' },
@@ -1262,10 +1305,12 @@ app.get(['/api/events/sse', '/api/v1/events/sse'], (req: any, res: any) => {
 
 // People, Visitors & Attendance Routes
 app.get(['/api/people', '/api/v1/people'], (req, res) => {
+  setNoCacheHeaders(res);
   res.json(db.users);
 });
 
 app.get(['/api/visitors', '/api/v1/visitors'], (req, res) => {
+  setNoCacheHeaders(res);
   const visitors = [
     { id: 'vis-101', name: 'Mark Vance', company: 'OSHA Safety Audit Co.', host: 'Sarah Jenkins', badgeEpc: 'E2801191A0000010000009901', site: 'Downtown Metro Tower', status: 'ACTIVE', checkedInAt: new Date(Date.now() - 3600000*2).toISOString() },
     { id: 'vis-102', name: 'Laura Linney', company: 'Caterpillar Hydraulics', host: 'Carlos Mendez', badgeEpc: 'E2801191A0000010000009902', site: 'Highway 101 Expansion', status: 'CHECKED_OUT', checkedInAt: new Date(Date.now() - 3600000*6).toISOString(), checkedOutAt: new Date(Date.now() - 3600000*1).toISOString() }
@@ -1274,6 +1319,7 @@ app.get(['/api/visitors', '/api/v1/visitors'], (req, res) => {
 });
 
 app.get(['/api/attendance', '/api/v1/attendance'], (req, res) => {
+  setNoCacheHeaders(res);
   const attendanceLogs = db.users.map((u, i) => ({
     id: `att-${u.id}`,
     userId: u.id,
@@ -1289,6 +1335,7 @@ app.get(['/api/attendance', '/api/v1/attendance'], (req, res) => {
 
 // Spatiotemporal Asset Breadcrumb Movement Trajectory
 app.get(['/api/assets/:id/playback', '/api/v1/assets/:id/playback'], (req, res) => {
+  setNoCacheHeaders(res);
   const id = req.params.id;
   const asset = db.assets.find(a => a.id === id) || db.assets[0];
 
