@@ -25,6 +25,7 @@ import { SettingsView } from './components/SettingsView';
 import { UserPortalView } from './components/UserPortalView';
 import { PlaybackView } from './components/PlaybackView';
 import { DeveloperApiView } from './components/DeveloperApiView';
+import { ApiLogsView } from './components/ApiLogsView';
 import { AuditLogsView } from './components/AuditLogsView';
 import { HardwareSimulatorDrawer } from './components/HardwareSimulatorDrawer';
 import { QrCodeModal } from './components/QrCodeModal';
@@ -590,6 +591,10 @@ export default function App() {
 
           {activeTab === 'developer' && (
             <DeveloperApiView />
+          )}
+
+          {activeTab === 'api-logs' && (
+            <ApiLogsView onNavigateTab={setActiveTab} />
           )}
 
           {activeTab === 'settings' && (

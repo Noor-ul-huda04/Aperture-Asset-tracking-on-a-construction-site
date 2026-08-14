@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Globe, 
   Key, 
@@ -20,8 +20,16 @@ import {
   ExternalLink,
   Cpu,
   Radio,
-  AlertCircle
+  AlertCircle,
+  Activity,
+  FileCode,
+  Search,
+  Filter,
+  Trash2,
+  Maximize2,
+  ArrowUpRight
 } from 'lucide-react';
+import { ApiEndpointLogEntry } from '../types';
 
 export const DeveloperApiView: React.FC = () => {
   // Config state
@@ -46,6 +54,15 @@ export const DeveloperApiView: React.FC = () => {
   const [copiedKey, setCopiedKey] = useState<boolean>(false);
   const [copiedCurl, setCopiedCurl] = useState<boolean>(false);
 
+  // API Endpoint Request Logs state
+  const [endpointLogs, setEndpointLogs] = useState<ApiEndpointLogEntry[]>([]);
+  const [logsLoading, setLogsLoading] = useState<boolean>(false);
+  const [searchLogTerm, setSearchLogTerm] = useState<string>('');
+  const [filterLogMethod, setFilterLogMethod] = useState<string>('ALL');
+  const [filterLogStatus, setFilterLogStatus] = useState<string>('ALL');
+  const [autoRefreshLogs, setAutoRefreshLogs] = useState<boolean>(true);
+  const [selectedLogDetail, setSelectedLogDetail] = useState<ApiEndpointLogEntry | null>(null);
+
   // Feedback Notification state
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
@@ -54,7 +71,72 @@ export const DeveloperApiView: React.FC = () => {
     setTimeout(() => setNotification(null), 3000);
   };
 
-  // Load persisted configuration from server on mount
+  // Fetch API Request Logs from backend
+  const fetchEndpointLogs = useCallback(async () => {
+    try {
+      const res = await fetch('/api/logs/endpoint-requests');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.logs) {
+          setEndpointLogs(data.logs);
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to load endpoint logs:', err);
+    }
+  }, []);
+
+  // Execute active endpoint request
+  const handleExecuteRequest = async (overrideEndpoint?: string) => {
+    const targetEndpoint = overrideEndpoint || activeEndpoint;
+    setIsExecuting(true);
+    try {
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (authScheme === 'X-API-Key') {
+        headers['X-API-Key'] = apiKey;
+      } else {
+        headers['Authorization'] = `Bearer ${apiKey}`;
+      }
+
+      let res: Response;
+      if (targetEndpoint === '/api/gao/read-tags') {
+        res = await fetch('/api/gao/read-tags', {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            epc: 'E2801191A000001000000888',
+            readerId: 'reader-101',
+            rssi: -45,
+            ant: 1
+          })
+        });
+      } else if (targetEndpoint === '/getTagsInRealTime') {
+        res = await fetch('/getTagsInRealTime', { headers });
+        if (!res.ok && res.status === 404) {
+          res = await fetch('/api/getTagsInRealTime', { headers });
+        }
+      } else {
+        res = await fetch(targetEndpoint, { headers });
+      }
+
+      const rawText = await res.text();
+      try {
+        const parsed = JSON.parse(rawText);
+        setTestResponse(JSON.stringify(parsed, null, 2));
+      } catch {
+        setTestResponse(rawText);
+      }
+      
+      // Refresh endpoint logs immediately after execution
+      setTimeout(fetchEndpointLogs, 300);
+    } catch (err: any) {
+      setTestResponse(JSON.stringify({ error: err.message || 'Execution error' }, null, 2));
+    } finally {
+      setIsExecuting(false);
+    }
+  };
+
+  // Load persisted configuration and initial live test on mount
   useEffect(() => {
     const fetchConfig = async () => {
       try {
@@ -72,8 +154,22 @@ export const DeveloperApiView: React.FC = () => {
         console.log('Using default gateway settings');
       }
     };
+    
     fetchConfig();
+    fetchEndpointLogs();
+
+    // Auto-run initial test query so the response window is immediately populated with live RFID data
+    handleExecuteRequest('/getTagsInRealTime');
   }, []);
+
+  // Periodic polling for endpoint logs if autoRefreshLogs is active
+  useEffect(() => {
+    if (!autoRefreshLogs) return;
+    const interval = setInterval(() => {
+      fetchEndpointLogs();
+    }, 4000);
+    return () => clearInterval(interval);
+  }, [autoRefreshLogs, fetchEndpointLogs]);
 
   const handleResetDefault = () => {
     setBaseUrl('https://mp8099715bd3105fe219.free.beeceptor.com');
@@ -98,6 +194,7 @@ export const DeveloperApiView: React.FC = () => {
       setLastVerifiedAt(new Date().toLocaleTimeString());
       setConnectionStatus('CONNECTED');
       showNotification('Connection verified (HTTP 200 OK)', 'success');
+      fetchEndpointLogs();
     } catch (err: any) {
       setConnectionStatus('DISCONNECTED');
       showNotification('Connection handshake failed', 'error');
@@ -130,52 +227,13 @@ export const DeveloperApiView: React.FC = () => {
     }
   };
 
-  const handleExecuteRequest = async () => {
-    setIsExecuting(true);
-    setTestResponse(null);
+  const handleClearLogs = async () => {
     try {
-      let targetUrl = activeEndpoint;
-      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-      if (authScheme === 'X-API-Key') {
-        headers['X-API-Key'] = apiKey;
-      } else {
-        headers['Authorization'] = `Bearer ${apiKey}`;
-      }
-
-      let res: Response;
-      if (activeEndpoint === '/api/gao/read-tags') {
-        res = await fetch('/api/gao/read-tags', {
-          method: 'POST',
-          headers,
-          body: JSON.stringify({
-            epc: 'E2801191A000001000000888',
-            readerId: 'reader-101',
-            rssi: -45,
-            ant: 1
-          })
-        });
-      } else if (activeEndpoint === '/getTagsInRealTime') {
-        // Support both /getTagsInRealTime and /api/getTagsInRealTime
-        res = await fetch('/getTagsInRealTime', { headers });
-        if (!res.ok && res.status === 404) {
-          res = await fetch('/api/getTagsInRealTime', { headers });
-        }
-      } else {
-        res = await fetch(targetUrl, { headers });
-      }
-
-      const rawText = await res.text();
-      try {
-        const parsed = JSON.parse(rawText);
-        setTestResponse(JSON.stringify(parsed, null, 2));
-      } catch {
-        // If response is HTML or plain text
-        setTestResponse(rawText);
-      }
-    } catch (err: any) {
-      setTestResponse(JSON.stringify({ error: err.message || 'Execution error' }, null, 2));
-    } finally {
-      setIsExecuting(false);
+      await fetch('/api/logs/endpoint-requests/clear', { method: 'POST' });
+      setEndpointLogs([]);
+      showNotification('API Endpoint request logs cleared', 'success');
+    } catch (err) {
+      setEndpointLogs([]);
     }
   };
 
@@ -199,6 +257,24 @@ export const DeveloperApiView: React.FC = () => {
     setCopiedKey(true);
     setTimeout(() => setCopiedKey(false), 2000);
   };
+
+  // Filter logs based on search & selectors
+  const filteredLogs = endpointLogs.filter((log) => {
+    const matchesSearch = 
+      log.path?.toLowerCase().includes(searchLogTerm.toLowerCase()) ||
+      log.ip?.toLowerCase().includes(searchLogTerm.toLowerCase()) ||
+      log.method?.toLowerCase().includes(searchLogTerm.toLowerCase()) ||
+      log.responseSummary?.toLowerCase().includes(searchLogTerm.toLowerCase());
+
+    const matchesMethod = filterLogMethod === 'ALL' || log.method === filterLogMethod;
+    const matchesStatus = filterLogStatus === 'ALL' 
+      ? true 
+      : filterLogStatus === '2XX' 
+        ? log.status >= 200 && log.status < 300 
+        : log.status >= 400;
+
+    return matchesSearch && matchesMethod && matchesStatus;
+  });
 
   return (
     <div className="space-y-6">
@@ -230,7 +306,7 @@ export const DeveloperApiView: React.FC = () => {
                 v4.2.0-GAO
               </span>
             </h1>
-            <p className="text-xs text-slate-400">Configure outbound GAO UHF reader endpoints, authentication schemes, and real-time polling workers</p>
+            <p className="text-xs text-slate-400">Configure outbound GAO UHF reader endpoints, authentication schemes, and monitor real-time endpoint ingestion logs</p>
           </div>
         </div>
 
@@ -255,7 +331,7 @@ export const DeveloperApiView: React.FC = () => {
         </div>
       </div>
 
-      {/* 1. Connection Verified Banner (Matches user screenshot) */}
+      {/* 1. Connection Verified Banner */}
       <div className="bg-slate-900/90 border border-teal-500/30 rounded-2xl p-4 shadow-xl backdrop-blur-md">
         <div className="flex items-start sm:items-center gap-3.5">
           <div className="w-8 h-8 rounded-full bg-teal-500/10 border border-teal-400/40 flex items-center justify-center text-teal-400 shrink-0 mt-0.5 sm:mt-0">
@@ -267,7 +343,7 @@ export const DeveloperApiView: React.FC = () => {
               <span className="inline-block w-2 h-2 rounded-full bg-teal-400 animate-pulse" />
             </div>
             <p className="text-xs text-slate-300 mt-0.5">
-              Successfully connected to GAO RFID API server ({latencyMs}ms latency). Authentication verified.
+              Successfully connected to GAO RFID API server ({latencyMs}ms latency). Ingestion pipeline online and authenticated.
             </p>
           </div>
           <span className="hidden sm:inline-block text-[11px] font-mono text-slate-400">
@@ -276,7 +352,7 @@ export const DeveloperApiView: React.FC = () => {
         </div>
       </div>
 
-      {/* 2. Main Config Card: API BASE URL, API KEY, AUTH HEADER SCHEME, POLLING INTERVAL */}
+      {/* 2. Main Config Card */}
       <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 sm:p-6 shadow-xl space-y-6">
         
         {/* API BASE URL */}
@@ -304,10 +380,10 @@ export const DeveloperApiView: React.FC = () => {
               className="w-full bg-slate-950 border border-slate-700/80 rounded-xl px-4 py-2.5 text-sm text-slate-100 font-mono focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/50 transition-all placeholder:text-slate-600"
             />
           </div>
-          <p className="text-[11px] text-slate-400">The primary GAO RFID People Tracking UHF HTTP endpoint or proxy URL</p>
+          <p className="text-[11px] text-slate-400">The primary GAO RFID People & Asset Tracking UHF HTTP endpoint or proxy URL</p>
         </div>
 
-        {/* API KEY & AUTH HEADER SCHEME (Two columns) */}
+        {/* API KEY & AUTH HEADER SCHEME */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
           
           {/* API KEY */}
@@ -441,7 +517,7 @@ export const DeveloperApiView: React.FC = () => {
 
       </div>
 
-      {/* 4. Interactive Live Endpoint Tester & cURL Generator */}
+      {/* 3. Interactive Live Endpoint Tester */}
       <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 sm:p-6 shadow-xl space-y-5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-4">
           <div className="flex items-center gap-2.5">
@@ -450,18 +526,18 @@ export const DeveloperApiView: React.FC = () => {
             </div>
             <div>
               <h2 className="text-sm font-bold text-white tracking-wide">Live Interactive Endpoint Tester</h2>
-              <p className="text-xs text-slate-400">Test real-time GAO ingestion with your active headers and payload</p>
+              <p className="text-xs text-slate-400">Test real-time GAO ingestion and inspect immediate server payloads</p>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
             <button
-              onClick={handleExecuteRequest}
+              onClick={() => handleExecuteRequest()}
               disabled={isExecuting}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-md shadow-blue-600/20 transition-all cursor-pointer"
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-md shadow-blue-600/20 transition-all cursor-pointer active:scale-95"
             >
               {isExecuting ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
-              <span>{isExecuting ? 'Sending Request...' : 'Send Request'}</span>
+              <span>{isExecuting ? 'Executing...' : 'Send Request'}</span>
             </button>
           </div>
         </div>
@@ -472,13 +548,14 @@ export const DeveloperApiView: React.FC = () => {
             { path: '/getTagsInRealTime', method: 'GET', label: 'GAO Real-Time Tags' },
             { path: '/api/gao/read-tags', method: 'POST', label: 'GAO Tag Read Ingestion' },
             { path: '/api/aperture/sync', method: 'GET', label: 'MongoDB & Aperture Sync' },
-            { path: '/api/docs/openapi', method: 'GET', label: 'OpenAPI 3.0 Specification' },
+            { path: '/api/gao/status', method: 'GET', label: 'Gateway Health Status' },
+            { path: '/api/docs/openapi', method: 'GET', label: 'OpenAPI 3.0 Spec' },
           ].map((ep) => (
             <button
               key={ep.path}
               onClick={() => {
                 setActiveEndpoint(ep.path);
-                setTestResponse(null);
+                handleExecuteRequest(ep.path);
               }}
               className={`px-3 py-1.5 rounded-lg border text-xs font-mono transition-all flex items-center gap-2 cursor-pointer ${
                 activeEndpoint === ep.path
@@ -516,22 +593,240 @@ export const DeveloperApiView: React.FC = () => {
           <div className="flex items-center justify-between text-xs font-mono text-slate-400">
             <span>LIVE SERVER RESPONSE</span>
             {testResponse && (
-              <span className="text-[10px] text-emerald-400 font-mono font-bold">● Status: 200 OK</span>
+              <span className="text-[10px] text-emerald-400 font-mono font-bold flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block animate-ping"></span>
+                <span>● Status: 200 OK</span>
+              </span>
             )}
           </div>
-          <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 font-mono text-xs text-slate-200 min-h-[140px] max-h-[320px] overflow-y-auto whitespace-pre-wrap">
+          <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 font-mono text-xs text-slate-200 min-h-[160px] max-h-[340px] overflow-y-auto whitespace-pre-wrap">
             {testResponse ? (
               testResponse
             ) : (
-              <span className="text-slate-600 italic">
-                // Click "Send Request" above to execute the active endpoint with the selected {authScheme} scheme
+              <span className="text-slate-500 italic">
+                // Loading real-time response payload...
               </span>
             )}
           </div>
         </div>
 
       </div>
+
+      {/* 4. REAL-TIME API ENDPOINT INGESTION & REQUEST LOGS */}
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 sm:p-6 shadow-xl space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+              <Activity className="w-4 h-4" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-sm font-bold text-white tracking-wide">API Endpoint Request & Ingestion Logs</h2>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                  <span>{endpointLogs.length} Logged Requests</span>
+                </span>
+              </div>
+              <p className="text-xs text-slate-400">Real-time spatiotemporal HTTP telemetry of incoming reader queries and proxy requests</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setAutoRefreshLogs(!autoRefreshLogs)}
+              className={`px-3 py-1.5 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+                autoRefreshLogs 
+                  ? 'bg-emerald-950/80 border-emerald-700/60 text-emerald-300' 
+                  : 'bg-slate-800 border-slate-700 text-slate-400'
+              }`}
+              title="Toggle automatic log streaming"
+            >
+              <span className={`w-2 h-2 rounded-full ${autoRefreshLogs ? 'bg-emerald-400 animate-ping' : 'bg-slate-500'}`}></span>
+              <span>{autoRefreshLogs ? 'Live Stream: Active' : 'Live Stream: Paused'}</span>
+            </button>
+
+            <button
+              onClick={fetchEndpointLogs}
+              className="p-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 rounded-xl transition-colors cursor-pointer"
+              title="Refresh log list"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+            </button>
+
+            <button
+              onClick={handleClearLogs}
+              className="p-2 bg-slate-800 hover:bg-red-950/80 hover:text-red-300 border border-slate-700 text-slate-400 rounded-xl transition-colors cursor-pointer"
+              title="Clear API logs"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+
+        {/* Filter & Search Bar */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-1">
+          <div className="relative w-full sm:w-72">
+            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
+            <input
+              type="text"
+              placeholder="Search by path, IP, or method..."
+              value={searchLogTerm}
+              onChange={(e) => setSearchLogTerm(e.target.value)}
+              className="w-full pl-9 pr-3 py-1.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 focus:outline-none focus:border-blue-500 font-mono placeholder:text-slate-600"
+            />
+          </div>
+
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <select
+              value={filterLogMethod}
+              onChange={(e) => setFilterLogMethod(e.target.value)}
+              className="bg-slate-950 border border-slate-800 text-slate-300 text-xs rounded-xl px-2.5 py-1.5 font-mono focus:outline-none"
+            >
+              <option value="ALL">All Methods</option>
+              <option value="GET">GET</option>
+              <option value="POST">POST</option>
+              <option value="PUT">PUT</option>
+              <option value="DELETE">DELETE</option>
+            </select>
+
+            <select
+              value={filterLogStatus}
+              onChange={(e) => setFilterLogStatus(e.target.value)}
+              className="bg-slate-950 border border-slate-800 text-slate-300 text-xs rounded-xl px-2.5 py-1.5 font-mono focus:outline-none"
+            >
+              <option value="ALL">All Statuses</option>
+              <option value="2XX">2xx Success</option>
+              <option value="4XX">4xx / 5xx Errors</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Log Table */}
+        <div className="border border-slate-800 rounded-xl overflow-hidden bg-slate-950">
+          <div className="overflow-x-auto max-h-[380px]">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-slate-900/90 text-slate-400 uppercase font-mono font-bold text-[10px] border-b border-slate-800 sticky top-0 z-10 backdrop-blur-xs">
+                <tr>
+                  <th className="px-3.5 py-2.5">Time</th>
+                  <th className="px-3.5 py-2.5">Method</th>
+                  <th className="px-3.5 py-2.5">Endpoint Path</th>
+                  <th className="px-3.5 py-2.5">Status</th>
+                  <th className="px-3.5 py-2.5">Latency</th>
+                  <th className="px-3.5 py-2.5">Client IP</th>
+                  <th className="px-3.5 py-2.5">Auth Header</th>
+                  <th className="px-3.5 py-2.5 text-right">Details</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-800/60 font-mono text-[11px]">
+                {filteredLogs.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="px-4 py-8 text-center text-slate-500 font-sans italic">
+                      No API endpoint request logs match the active search criteria.
+                    </td>
+                  </tr>
+                ) : (
+                  filteredLogs.map((log) => (
+                    <tr key={log.id} className="hover:bg-slate-900/50 transition-colors">
+                      <td className="px-3.5 py-2 text-slate-400 whitespace-nowrap">
+                        {new Date(log.timestamp).toLocaleTimeString()}
+                      </td>
+                      <td className="px-3.5 py-2 whitespace-nowrap">
+                        <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                          log.method === 'POST'
+                            ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                            : log.method === 'GET'
+                              ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
+                              : 'bg-purple-500/20 text-purple-400 border border-purple-500/30'
+                        }`}>
+                          {log.method}
+                        </span>
+                      </td>
+                      <td className="px-3.5 py-2 font-bold text-slate-200 whitespace-nowrap">
+                        {log.path}
+                      </td>
+                      <td className="px-3.5 py-2 whitespace-nowrap">
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                          log.status >= 200 && log.status < 300
+                            ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
+                            : 'bg-red-500/10 text-red-400 border border-red-500/30'
+                        }`}>
+                          {log.status} {log.status === 200 ? 'OK' : log.status === 201 ? 'Created' : 'Error'}
+                        </span>
+                      </td>
+                      <td className="px-3.5 py-2 text-cyan-400 whitespace-nowrap">
+                        {log.durationMs}ms
+                      </td>
+                      <td className="px-3.5 py-2 text-slate-400 whitespace-nowrap">
+                        {log.ip}
+                      </td>
+                      <td className="px-3.5 py-2 text-slate-400 whitespace-nowrap text-[10px]">
+                        <span className="bg-slate-900 px-1.5 py-0.5 rounded border border-slate-800">
+                          {log.authHeader}
+                        </span>
+                      </td>
+                      <td className="px-3.5 py-2 text-right whitespace-nowrap">
+                        <button
+                          onClick={() => setSelectedLogDetail(log)}
+                          className="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-[10px] font-sans font-semibold transition-colors cursor-pointer"
+                        >
+                          Inspect
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+
+      {/* Log Detail Inspector Modal */}
+      {selectedLogDetail && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fade-in">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-lg w-full p-5 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2">
+                <FileCode className="w-4 h-4 text-blue-400" />
+                <h3 className="text-sm font-bold text-white">HTTP Request Inspection</h3>
+              </div>
+              <button 
+                onClick={() => setSelectedLogDetail(null)}
+                className="text-slate-400 hover:text-white text-xs px-2 py-1 rounded-lg hover:bg-slate-800 cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-2 text-xs font-mono">
+              <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-1.5 text-slate-300">
+                <div><span className="text-slate-500">Timestamp:</span> {selectedLogDetail.timestamp}</div>
+                <div><span className="text-slate-500">Method:</span> <span className="text-blue-400 font-bold">{selectedLogDetail.method}</span></div>
+                <div><span className="text-slate-500">Endpoint:</span> <span className="text-emerald-400 font-bold">{selectedLogDetail.path}</span></div>
+                <div><span className="text-slate-500">Status:</span> <span className="text-emerald-400">{selectedLogDetail.status}</span></div>
+                <div><span className="text-slate-500">Duration:</span> {selectedLogDetail.durationMs}ms</div>
+                <div><span className="text-slate-500">Client IP:</span> {selectedLogDetail.ip}</div>
+                <div><span className="text-slate-500">Auth Header:</span> {selectedLogDetail.authHeader}</div>
+                {selectedLogDetail.userAgent && (
+                  <div className="truncate"><span className="text-slate-500">User Agent:</span> {selectedLogDetail.userAgent}</div>
+                )}
+                <div><span className="text-slate-500">Summary:</span> {selectedLogDetail.responseSummary}</div>
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-2">
+              <button
+                onClick={() => setSelectedLogDetail(null)}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl cursor-pointer"
+              >
+                Close Inspector
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };
-

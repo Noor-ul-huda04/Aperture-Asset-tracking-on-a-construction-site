@@ -231,3 +231,17 @@ export interface ApiGatewayConfig {
   status: 'CONNECTED' | 'DISCONNECTED' | 'TESTING';
 }
 
+export interface ApiEndpointLogEntry {
+  id: string;
+  timestamp: string;
+  method: string;
+  path: string;
+  status: number;
+  ip: string;
+  durationMs: number;
+  authHeader: string;
+  userAgent?: string;
+  responseSummary?: string;
+  requestBody?: any;
+}
+

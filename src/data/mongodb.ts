@@ -13,11 +13,25 @@ let connectionError: string | null = null;
 let lastSyncedAt: string | null = null;
 
 export async function connectToMongoDB(): Promise<{ db: Db | null; connected: boolean; error: string | null }> {
-  const uri = process.env.MONGODB_URI;
+  let rawUri = process.env.MONGODB_URI;
   
-  if (!uri) {
+  if (!rawUri || !rawUri.trim()) {
     console.log('[MongoDB Module] MONGODB_URI not found in environment.');
-    return { db: null, connected: false, error: 'MONGODB_URI environment variable is missing.' };
+    return { 
+      db: null, 
+      connected: false, 
+      error: 'MONGODB_URI environment variable is missing or empty. Please set MONGODB_URI in Settings/Secrets.' 
+    };
+  }
+
+  // Sanitize URI: remove surrounding quotes, trailing slashes, leading/trailing whitespace, and newlines
+  let uri = rawUri.trim().replace(/^["']|["']$/g, '').trim();
+
+  // Validate connection string scheme
+  if (!uri.startsWith('mongodb://') && !uri.startsWith('mongodb+srv://')) {
+    const errorMsg = `Invalid scheme: The connection string "${uri.slice(0, 20)}..." does not start with "mongodb://" or "mongodb+srv://". Please verify that your MONGODB_URI secret contains the full connection string from MongoDB Atlas (e.g. mongodb+srv://username:password@cluster0.mongodb.net/dbname).`;
+    connectionError = errorMsg;
+    return { db: null, connected: false, error: errorMsg };
   }
 
   // If already connected in warm serverless execution context, reuse

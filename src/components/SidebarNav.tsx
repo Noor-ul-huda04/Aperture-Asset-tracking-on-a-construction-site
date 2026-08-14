@@ -40,6 +40,7 @@ export type TabType =
   | 'playback'
   | 'audit'
   | 'developer'
+  | 'api-logs'
   | 'settings';
 
 interface SidebarNavProps {
@@ -70,6 +71,7 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({
     { id: 'mobile', label: 'Field Mode', icon: <Smartphone className="w-4 h-4" /> },
     { id: 'audit', label: 'Security & Audit Logs', icon: <FileText className="w-4 h-4" /> },
     { id: 'developer', label: 'Developer & GAO API', icon: <Terminal className="w-4 h-4" /> },
+    { id: 'api-logs', label: 'API Endpoint Logs', icon: <Activity className="w-4 h-4" /> },
     { id: 'settings', label: 'Settings & RBAC', icon: <Settings className="w-4 h-4" /> }
   ];
 

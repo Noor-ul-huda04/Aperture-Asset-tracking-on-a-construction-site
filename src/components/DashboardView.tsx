@@ -526,8 +526,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <div className="pt-3 border-t border-slate-100 mt-3 flex items-center justify-between text-xs text-slate-500">
             <span className="font-mono">UHF RFID Engine</span>
             <button
-              onClick={() => onNavigateTab('api')}
-              className="text-blue-600 hover:underline font-semibold"
+              onClick={() => onNavigateTab('api-logs')}
+              className="text-blue-600 hover:underline font-semibold cursor-pointer"
             >
               API Endpoint Log →
             </button>
