@@ -11,21 +11,22 @@ export const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfi
 setLogLevel('error');
 
 export const db = (() => {
+  const settings = {
+    experimentalForceLongPolling: true,
+    localCache: memoryLocalCache(),
+  };
+
   try {
     if (firebaseConfig.firestoreDatabaseId) {
-      return getFirestore(app, firebaseConfig.firestoreDatabaseId);
+      return initializeFirestore(app, settings, firebaseConfig.firestoreDatabaseId);
     }
-    return getFirestore(app);
+    return initializeFirestore(app, settings);
   } catch (_e) {
     try {
       if (firebaseConfig.firestoreDatabaseId) {
-        return initializeFirestore(app, {
-          localCache: memoryLocalCache(),
-        }, firebaseConfig.firestoreDatabaseId);
+        return getFirestore(app, firebaseConfig.firestoreDatabaseId);
       }
-      return initializeFirestore(app, {
-        localCache: memoryLocalCache(),
-      });
+      return getFirestore(app);
     } catch (_e2) {
       return getFirestore(app);
     }
@@ -208,7 +209,11 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
 // Connection test
 async function testConnection() {
   try {
-    await getDoc(doc(db, 'test', 'connection'));
+    const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 2000));
+    await Promise.race([
+      getDoc(doc(db, 'sites', 'site-1')),
+      timeoutPromise
+    ]);
   } catch (_err) {
     // Silent fallback for offline sandboxed preview environments
   }

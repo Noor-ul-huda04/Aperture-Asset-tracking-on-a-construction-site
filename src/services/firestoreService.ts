@@ -30,7 +30,11 @@ export async function checkFirestoreConnection(): Promise<boolean> {
   if (!navigator.onLine) return false;
   try {
     const testDoc = doc(db, 'sites', 'site-1');
-    const snap = await getDoc(testDoc);
+    const timeoutPromise = new Promise<never>((_, reject) => setTimeout(() => reject(new Error('timeout')), 2500));
+    const snap = await Promise.race([
+      getDoc(testDoc),
+      timeoutPromise
+    ]);
     return snap.exists();
   } catch (_err) {
     try {
