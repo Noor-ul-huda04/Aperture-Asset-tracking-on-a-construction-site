@@ -1,4 +1,4 @@
-import { app, ensureMongoConnected } from '../src/serverApp';
+import { app, ensureMongoConnected } from '../src/serverApp.js';
 
 export default async function handler(req: any, res: any) {
   // Ensure Mongo connection in warm serverless context
