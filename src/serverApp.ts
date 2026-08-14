@@ -323,8 +323,8 @@ app.use((req, res, next) => {
       const clientIp = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.socket?.remoteAddress || '127.0.0.1';
       const endpointPath = req.url.split('?')[0];
       const isRfid = endpointPath.includes('Tags') || endpointPath.includes('gao');
-      const tagCount = isRfid ? 15 : undefined;
-      const uniqueEpcs = isRfid ? 15 : undefined;
+      const tagCount = isRfid ? db.assets.length : undefined;
+      const uniqueEpcs = isRfid ? db.assets.length : undefined;
       
       if (!db.apiEndpointLogs) {
         db.apiEndpointLogs = [];
@@ -1559,8 +1559,8 @@ app.get(['/api/logs', '/api/v1/logs'], async (req, res) => {
         endpoint: l.endpoint || l.path,
         status: l.status,
         responseTime: l.responseTime || l.durationMs || 45,
-        tagCount: l.tagCount ?? (l.endpoint?.includes('Tags') ? 15 : undefined),
-        uniqueEpcs: l.uniqueEpcs ?? (l.endpoint?.includes('Tags') ? 15 : undefined),
+        tagCount: l.tagCount ?? (l.endpoint?.includes('Tags') ? db.assets.length : undefined),
+        uniqueEpcs: l.uniqueEpcs ?? (l.endpoint?.includes('Tags') ? db.assets.length : undefined),
         authenticated: l.authenticated ?? true,
         requestId: l.requestId || l.id,
         errorMessage: l.errorMessage || null
