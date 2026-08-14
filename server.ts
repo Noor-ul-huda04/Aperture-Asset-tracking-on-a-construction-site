@@ -9,7 +9,7 @@ import {
   getMongoError,
   getLastSyncedAt,
   setLastSyncedAt
-} from './server/mongodb';
+} from './src/data/mongodb';
 import {
   INITIAL_ASSETS,
   INITIAL_SITES,
