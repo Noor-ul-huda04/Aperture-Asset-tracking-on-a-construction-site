@@ -4,6 +4,10 @@
   "outputDirectory": "dist",
   "rewrites": [
     {
+      "source": "/getTagsInRealTime",
+      "destination": "/api/index.ts"
+    },
+    {
       "source": "/api",
       "destination": "/api/index.ts"
     },
@@ -12,7 +16,7 @@
       "destination": "/api/index.ts"
     },
     {
-      "source": "/((?!api/).*)",
+      "source": "/((?!api/|getTagsInRealTime).*)",
       "destination": "/index.html"
     }
   ]

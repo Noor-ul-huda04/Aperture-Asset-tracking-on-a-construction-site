@@ -134,24 +134,19 @@ export const DeveloperApiView: React.FC = () => {
     setIsExecuting(true);
     setTestResponse(null);
     try {
-      if (activeEndpoint === '/getTagsInRealTime') {
-        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-        if (authScheme === 'X-API-Key') {
-          headers['X-API-Key'] = apiKey;
-        } else {
-          headers['Authorization'] = `Bearer ${apiKey}`;
-        }
+      let targetUrl = activeEndpoint;
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (authScheme === 'X-API-Key') {
+        headers['X-API-Key'] = apiKey;
+      } else {
+        headers['Authorization'] = `Bearer ${apiKey}`;
+      }
 
-        const res = await fetch('/getTagsInRealTime', { headers });
-        const data = await res.json();
-        setTestResponse(JSON.stringify(data, null, 2));
-      } else if (activeEndpoint === '/api/gao/read-tags') {
-        const res = await fetch('/api/gao/read-tags', {
+      let res: Response;
+      if (activeEndpoint === '/api/gao/read-tags') {
+        res = await fetch('/api/gao/read-tags', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            ...(authScheme === 'X-API-Key' ? { 'X-API-Key': apiKey } : { 'Authorization': `Bearer ${apiKey}` })
-          },
+          headers,
           body: JSON.stringify({
             epc: 'E2801191A000001000000888',
             readerId: 'reader-101',
@@ -159,16 +154,23 @@ export const DeveloperApiView: React.FC = () => {
             ant: 1
           })
         });
-        const data = await res.json();
-        setTestResponse(JSON.stringify(data, null, 2));
-      } else if (activeEndpoint === '/api/aperture/sync') {
-        const res = await fetch('/api/aperture/sync');
-        const data = await res.json();
-        setTestResponse(JSON.stringify(data, null, 2));
+      } else if (activeEndpoint === '/getTagsInRealTime') {
+        // Support both /getTagsInRealTime and /api/getTagsInRealTime
+        res = await fetch('/getTagsInRealTime', { headers });
+        if (!res.ok && res.status === 404) {
+          res = await fetch('/api/getTagsInRealTime', { headers });
+        }
       } else {
-        const res = await fetch('/api/docs/openapi');
-        const data = await res.json();
-        setTestResponse(JSON.stringify(data, null, 2));
+        res = await fetch(targetUrl, { headers });
+      }
+
+      const rawText = await res.text();
+      try {
+        const parsed = JSON.parse(rawText);
+        setTestResponse(JSON.stringify(parsed, null, 2));
+      } catch {
+        // If response is HTML or plain text
+        setTestResponse(rawText);
       }
     } catch (err: any) {
       setTestResponse(JSON.stringify({ error: err.message || 'Execution error' }, null, 2));
