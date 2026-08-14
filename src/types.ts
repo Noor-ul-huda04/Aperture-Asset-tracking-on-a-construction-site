@@ -217,3 +217,17 @@ export interface HardwareStreamState {
   bufferedCount: number;
   lastIngestedEpc?: string;
 }
+
+export type AuthHeaderScheme = 'X-API-Key' | 'Bearer Token';
+
+export interface ApiGatewayConfig {
+  baseUrl: string;
+  apiKey: string;
+  authHeaderScheme: AuthHeaderScheme;
+  pollingIntervalSeconds: number; // e.g. 5, 10, 15, 30
+  isPollingActive: boolean;
+  lastVerifiedAt?: string;
+  latencyMs?: number;
+  status: 'CONNECTED' | 'DISCONNECTED' | 'TESTING';
+}
+
