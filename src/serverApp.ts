@@ -444,24 +444,29 @@ app.get(['/api/assets', '/api/v1/assets', '/assets'], async (req, res) => {
   }
 
   const { siteId, category, status, search } = req.query;
-  console.log('[GET /api/assets] query params:', { siteId, category, status, search }, 'initial list count:', list.length);
-  if (siteId && typeof siteId === 'string' && siteId !== 'undefined' && siteId !== 'ALL' && siteId !== 'null' && siteId !== '') {
-    list = list.filter(a => a.siteId === siteId);
+  const cleanSiteId = typeof siteId === 'string' && siteId !== 'undefined' && siteId !== 'ALL' && siteId !== 'null' && siteId.trim() !== '' ? siteId.trim() : undefined;
+  const cleanCategory = typeof category === 'string' && category !== 'undefined' && category !== 'ALL' && category !== 'null' && category.trim() !== '' ? category.trim() : undefined;
+  const cleanStatus = typeof status === 'string' && status !== 'undefined' && status !== 'ALL' && status !== 'null' && status.trim() !== '' ? status.trim() : undefined;
+  const cleanSearch = typeof search === 'string' && search !== 'undefined' && search !== 'null' && search.trim() !== '' ? search.trim().toLowerCase() : undefined;
+
+  console.log('[GET /api/assets] parsed params:', { siteId: cleanSiteId, category: cleanCategory, status: cleanStatus, search: cleanSearch }, 'total assets:', list.length);
+
+  if (cleanSiteId) {
+    list = list.filter(a => a.siteId === cleanSiteId);
   }
-  if (category && typeof category === 'string') {
-    list = list.filter(a => a.category === category);
+  if (cleanCategory) {
+    list = list.filter(a => a.category === cleanCategory);
   }
-  if (status && typeof status === 'string') {
-    list = list.filter(a => a.status === status);
+  if (cleanStatus) {
+    list = list.filter(a => a.status === cleanStatus);
   }
-  if (search && typeof search === 'string') {
-    const q = search.toLowerCase();
+  if (cleanSearch) {
     list = list.filter(a =>
-      a.name?.toLowerCase().includes(q) ||
-      a.tagEpc?.toLowerCase().includes(q) ||
-      a.serialNumber?.toLowerCase().includes(q) ||
-      a.manufacturer?.toLowerCase().includes(q) ||
-      a.model?.toLowerCase().includes(q)
+      a.name?.toLowerCase().includes(cleanSearch) ||
+      a.tagEpc?.toLowerCase().includes(cleanSearch) ||
+      a.serialNumber?.toLowerCase().includes(cleanSearch) ||
+      a.manufacturer?.toLowerCase().includes(cleanSearch) ||
+      a.model?.toLowerCase().includes(cleanSearch)
     );
   }
   res.json(list);
