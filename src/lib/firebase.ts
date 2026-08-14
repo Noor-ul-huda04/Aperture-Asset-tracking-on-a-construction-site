@@ -95,6 +95,12 @@ export async function getAppCheckToken(): Promise<string> {
   return defaultDevToken;
 }
 
+// Store native fetch reference immediately before any patching
+const nativeFetch = typeof window !== 'undefined' ? ((window as any)._originalFetch || window.fetch.bind(window)) : null;
+if (typeof window !== 'undefined' && !(window as any)._originalFetch && nativeFetch) {
+  (window as any)._originalFetch = nativeFetch;
+}
+
 export async function secureFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
   let url = typeof input === 'string' ? input : (input instanceof Request ? input.url : String(input));
   if (url.startsWith('/api') || url.startsWith('api/') || url.includes('/api/')) {
@@ -120,29 +126,32 @@ export async function secureFetch(input: RequestInfo | URL, init?: RequestInit):
       console.warn('[Fetch Interceptor] AppCheck attachment error:', e);
     }
   }
-  const rawFetch = (window as any)._originalFetch || window.fetch.bind(window);
+  const rawFetch = nativeFetch || (window as any)._originalFetch || window.fetch.bind(window);
   return rawFetch(input, init);
 }
 
 // Global fetch interceptor to attach X-Firebase-AppCheck header to all /api requests
 if (typeof window !== 'undefined' && window.fetch) {
   try {
-    const originalFetch = window.fetch.bind(window);
-    (window as any)._originalFetch = originalFetch;
+    if (!(window as any)._originalFetch) {
+      (window as any)._originalFetch = window.fetch.bind(window);
+    }
 
     const interceptedFetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
       return secureFetch(input, init);
     };
 
-    try {
-      (window as any).fetch = interceptedFetch;
-    } catch (_e) {
-      Object.defineProperty(window, 'fetch', {
-        value: interceptedFetch,
-        writable: true,
-        configurable: true,
-        enumerable: true
-      });
+    if (window.fetch !== interceptedFetch) {
+      try {
+        (window as any).fetch = interceptedFetch;
+      } catch (_e) {
+        Object.defineProperty(window, 'fetch', {
+          value: interceptedFetch,
+          writable: true,
+          configurable: true,
+          enumerable: true
+        });
+      }
     }
   } catch (err) {
     console.warn('[Firebase AppCheck] Could not patch window.fetch directly:', err);

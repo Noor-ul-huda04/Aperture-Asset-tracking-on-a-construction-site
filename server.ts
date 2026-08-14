@@ -1070,8 +1070,12 @@ Return ONLY valid JSON.`;
       const rawText = response.text || '';
       const cleanedJson = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
       aiAnalysis = JSON.parse(cleanedJson);
-    } catch (e) {
-      console.warn('Gemini behavior analysis fallback:', e);
+    } catch (e: any) {
+      if (e?.message?.includes('resource_exhausted') || e?.message?.includes('quota') || e?.status === 429) {
+        console.warn('Gemini API Quota Exceeded / Rate Limited (falling back to local secure heuristic engine).');
+      } else {
+        console.warn('Gemini behavior analysis fallback due to error:', e);
+      }
     }
   }
 
@@ -1519,8 +1523,15 @@ async function startServer() {
 }
 
 
-// Start standalone server unless running in Vercel serverless mode
-if (!process.env.VERCEL) {
+// Start standalone server unless running in Vercel or cloud serverless mode
+const isServerless = Boolean(
+  process.env.VERCEL ||
+  process.env.VERCEL_ENV ||
+  process.env.NOW_REGION ||
+  process.env.AWS_LAMBDA_FUNCTION_NAME
+);
+
+if (!isServerless) {
   startServer().catch((err) => {
     console.error(
       '[Aperture Server] Unhandled startup error:',
