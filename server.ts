@@ -292,27 +292,16 @@ app.use(async (req, res, next) => {
 
   const appCheckHeader = (req.headers['x-firebase-appcheck'] || req.headers['X-Firebase-AppCheck'] || req.headers['x-firebase-app-check']) as string;
 
-  if (!appCheckHeader) {
-    console.warn(`[Security Layer] Blocked unverified API request to ${req.method} ${req.url} (Missing X-Firebase-AppCheck header)`);
-    return res.status(401).json({
-      error: 'UNAUTHORIZED_APP_CHECK_REQUIRED',
-      message: 'Access denied: Valid Firebase App Check token is required for all API operations.',
-      timestamp: new Date().toISOString()
-    });
+  if (appCheckHeader) {
+    const verification = await verifyAppCheckToken(appCheckHeader);
+    if (verification.valid) {
+      (req as any).appCheckVerified = true;
+      (req as any).appCheckClaims = verification.claims;
+    } else {
+      console.warn(`[Security Layer] AppCheck token not verified: ${verification.reason} (proceeding in standard authenticated mode)`);
+    }
   }
 
-  const verification = await verifyAppCheckToken(appCheckHeader);
-  if (!verification.valid) {
-    console.warn(`[Security Layer] Denied API request to ${req.method} ${req.url}: ${verification.reason}`);
-    return res.status(403).json({
-      error: 'FORBIDDEN_INVALID_APP_CHECK_TOKEN',
-      message: `Access denied: Firebase App Check token verification failed (${verification.reason || 'Invalid token'}).`,
-      timestamp: new Date().toISOString()
-    });
-  }
-
-  (req as any).appCheckVerified = true;
-  (req as any).appCheckClaims = verification.claims;
   next();
 });
 
